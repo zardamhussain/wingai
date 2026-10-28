@@ -24,12 +24,30 @@ android {
         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
 
+    signingConfigs {
+        create("releaseConfig") {
+            val ksPath = System.getenv("KEYSTORE_PATH")
+            if (!ksPath.isNullOrBlank() && File(ksPath).exists()) {
+                storeFile = File(ksPath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
+            val ksPath = System.getenv("KEYSTORE_PATH")
+            signingConfig = if (!ksPath.isNullOrBlank() && File(ksPath).exists()) {
+                signingConfigs.getByName("releaseConfig")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
             isMinifyEnabled = true
@@ -52,7 +70,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
         }
-        base.archivesBaseName = "HeliBoard_" + defaultConfig.versionName
+        base.archivesBaseName = "WingAI-Board-" + defaultConfig.versionName
         // got a little too big for GitHub after some dependency upgrades, so we remove the largest dictionary
         androidComponents.onVariants { variant: ApplicationVariant ->
             if (variant.buildType == "debug") {
