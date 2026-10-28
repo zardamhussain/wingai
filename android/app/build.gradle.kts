@@ -58,6 +58,10 @@ android {
         debug {
             isMinifyEnabled = false
             isJniDebuggable = false
+            val ksPath = System.getenv("KEYSTORE_PATH")
+            if (!ksPath.isNullOrBlank() && File(ksPath).exists()) {
+                signingConfig = signingConfigs.getByName("releaseConfig")
+            }
         }
         create("runTests") { // build variant for running tests on CI that skips tests known to fail
             isMinifyEnabled = false
