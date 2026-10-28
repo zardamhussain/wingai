@@ -1,0 +1,21 @@
+{
+  "name": "wingai-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8",
+    "wrangler": "^4.154.0"
+  }
+}

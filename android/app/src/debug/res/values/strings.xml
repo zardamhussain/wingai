@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="english_ime_name" translatable="false">WingAI Board</string>
+    <string name="spell_checker_service_name" translatable="false">WingAI Board Spell Checker</string>
+    <string name="ime_settings" translatable="false">WingAI Board Settings</string>
+</resources>

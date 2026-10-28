@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Stylized Wing (3 layered aerodynamic feathers sweeping up-right) -->
+    <path
+        android:fillColor="#FF38BDF8"
+        android:pathData="M28,54 C28,36 44,24 68,24 C60,31 54,38 52,46 C42,46 34,49 28,54 Z" />
+    <path
+        android:fillColor="#FF818CF8"
+        android:pathData="M32,60 C35,46 48,37 66,36 C59,43 54,49 51,55 C43,55 37,57 32,60 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,65 C41,54 51,47 64,46 C58,52 54,57 50,62 C45,62 40,63 37,65 Z" />
+
+    <!-- AI 4-point Sparkle Star at upper right -->
+    <path
+        android:fillColor="#FFFDE047"
+        android:pathData="M74,23 L76.5,30.5 L84,33 L76.5,35.5 L74,43 L71.5,35.5 L64,33 L71.5,30.5 Z" />
+
+    <!-- Keyboard Keycaps Row + Spacebar at bottom -->
+    <path
+        android:fillColor="#E6FFFFFF"
+        android:pathData="M31,69 h9 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 h-9 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 z" />
+    <path
+        android:fillColor="#E6FFFFFF"
+        android:pathData="M45,69 h9 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 h-9 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 z" />
+    <path
+        android:fillColor="#E6FFFFFF"
+        android:pathData="M59,69 h9 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 h-9 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 z" />
+    <path
+        android:fillColor="#FF38BDF8"
+        android:pathData="M73,69 h6 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 z" />
+
+    <!-- Spacebar pill -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,81 h36 a2.5,2.5 0 0 1 0,5 h-36 a2.5,2.5 0 0 1 0,-5 z" />
+</vector>

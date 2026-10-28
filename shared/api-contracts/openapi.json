@@ -1,0 +1,49 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WingAI Board Cloudflare Worker API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://wingai-backend.zardamhussain.workers.dev"
+    }
+  ],
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "summary": "Check service status",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          }
+        }
+      }
+    },
+    "/v1/user": {
+      "get": {
+        "summary": "Get user plan (free or paid) and daily request usage",
+        "responses": {
+          "200": {
+            "description": "User profile and quota status"
+          }
+        }
+      }
+    },
+    "/v1/analyze": {
+      "post": {
+        "summary": "Analyze screen image or conversation text and return three replies"
+      }
+    },
+    "/v1/replies": {
+      "post": {
+        "summary": "Generate three replies from conversation text"
+      }
+    },
+    "/v1/rewrite": {
+      "post": {
+        "summary": "Modify a selected reply (rewrite, shorten, expand, or change tone)"
+      }
+    }
+  }
+}
