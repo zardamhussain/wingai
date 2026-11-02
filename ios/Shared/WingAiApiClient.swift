@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public enum WingAiApiError: LocalizedError, Equatable {
     case invalidUrl
@@ -8,7 +11,7 @@ public enum WingAiApiError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .invalidUrl:
-            return "Invalid WingAI backend URL."
+            return "Enter a valid HTTPS service URL without a query, fragment or credentials."
         case let .serverError(_, detail):
             return detail
         case let .networkError(reason):
@@ -25,7 +28,7 @@ public final class WingAiApiClient: Sendable {
     public init(
         baseUrlProvider: @escaping @Sendable () -> String = { AppGroupStore.shared.backendUrl },
         userIdProvider: @escaping @Sendable () -> String = { AppGroupStore.shared.getOrCreateUserId() },
-        session: URLSession = .shared
+        session: URLSession = URLSession(configuration: .ephemeral)
     ) {
         self.baseUrlProvider = baseUrlProvider
         self.userIdProvider = userIdProvider
@@ -34,7 +37,7 @@ public final class WingAiApiClient: Sendable {
 
     public func fetchUserProfile() async throws -> UserProfile {
         let userId = userIdProvider()
-        guard var components = URLComponents(string: "\(normalizedBaseUrl())/v1/user") else {
+        guard var components = URLComponents(string: "\(try validatedBaseUrl())/v1/user") else {
             throw WingAiApiError.invalidUrl
         }
         components.queryItems = [URLQueryItem(name: "user_id", value: userId)]
@@ -97,9 +100,18 @@ public final class WingAiApiClient: Sendable {
         return try await postJson(path: "/v1/rewrite", payload: body, decodeAs: ReplyResponse.self)
     }
 
-    private func normalizedBaseUrl() -> String {
-        let raw = baseUrlProvider().trimmingCharacters(in: .whitespacesAndNewlines)
-        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    public static func isValidBackend(_ value: String) -> Bool {
+        guard let parts = URLComponents(string: value), parts.scheme?.lowercased() == "https",
+              let host = parts.host, !host.isEmpty,
+              parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil else { return false }
+        return parts.url != nil
+    }
+
+    private func validatedBaseUrl() throws -> String {
+        var raw = baseUrlProvider().trimmingCharacters(in: .whitespacesAndNewlines)
+        while raw.hasSuffix("/") { raw.removeLast() }
+        guard Self.isValidBackend(raw) else { throw WingAiApiError.invalidUrl }
+        return raw
     }
 
     private func postJson<T: Decodable>(
@@ -107,7 +119,7 @@ public final class WingAiApiClient: Sendable {
         payload: [String: Any],
         decodeAs: T.Type
     ) async throws -> T {
-        guard let url = URL(string: "\(normalizedBaseUrl())\(path)") else {
+        guard let url = URL(string: "\(try validatedBaseUrl())\(path)") else {
             throw WingAiApiError.invalidUrl
         }
         var request = URLRequest(url: url)
@@ -126,6 +138,7 @@ public final class WingAiApiClient: Sendable {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            if Task.isCancelled { throw CancellationError() }
             throw WingAiApiError.networkError(error.localizedDescription)
         }
 

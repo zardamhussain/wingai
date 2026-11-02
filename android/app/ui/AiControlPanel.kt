@@ -93,6 +93,12 @@ fun AiControlPanel(
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        Text(
+            text = "Your reply, your way",
+            color = WingAiTokens.TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         if (isFloatingOverlay) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -101,7 +107,7 @@ fun AiControlPanel(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     CompactPillButton(
-                        text = "Select Area",
+                        text = "Analyze chat",
                         backgroundColor = WingAiTokens.AccentPrimary,
                         borderColor = WingAiTokens.AccentPrimary,
                         textColor = WingAiTokens.OnAccentPrimary,
@@ -132,9 +138,9 @@ fun AiControlPanel(
             val user = state.userProfile
             val isPaid = user?.isPaid == true
             val planLabel = when {
-                user == null -> "Plan"
+                user == null -> "My plan"
                 isPaid -> "Pro"
-                else -> "${user.remaining ?: 5}/${user.dailyLimit ?: 5} Free"
+                else -> "${user.remaining ?: 5} left today"
             }
             CompactPillButton(
                 text = planLabel,
@@ -153,14 +159,14 @@ fun AiControlPanel(
             )
 
             CompactPillButton(
-                text = "Paste Chat",
+                text = "Paste chat",
                 backgroundColor = WingAiTokens.Surface1,
                 borderColor = WingAiTokens.BorderSubtle,
                 onClick = onPasteFromClipboard
             )
 
             WingAiToneChip(
-                label = "All",
+                label = "Mix it up",
                 selected = state.selectedTone == null,
                 accentColor = WingAiTokens.AccentPrimary,
                 onClick = { onToneSelect(null) }
@@ -203,7 +209,7 @@ fun AiControlPanel(
                     modifier = Modifier.weight(1f),
                     placeholder = {
                         Text(
-                            "e.g. Tell them I am busy today",
+                            "e.g. Suggest coffee tomorrow instead",
                             fontSize = 11.sp,
                             color = WingAiTokens.TextMuted
                         )
@@ -477,7 +483,7 @@ fun AiControlPanel(
                         modifier = Modifier.weight(1f).padding(end = 8.dp)
                     )
                     CompactPillButton(
-                        text = "Retry",
+                        text = "Try again",
                         height = 26.dp,
                         fontSize = 11.sp,
                         backgroundColor = WingAiTokens.AccentPrimary,
@@ -500,27 +506,27 @@ fun AiControlPanel(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Select a message area or paste chat text",
+                        text = "Find your next words.",
                         color = WingAiTokens.TextPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Tap Select to highlight a chat section on screen, or tap Paste Chat to reply to copied text.",
+                        text = "Choose a chat area or paste a conversation. Get a few ways to say it, then make one yours.",
                         color = WingAiTokens.TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CompactPillButton(
-                            text = "Select Screen Area",
+                            text = "Analyze chat",
                             backgroundColor = WingAiTokens.AccentPrimary,
                             borderColor = WingAiTokens.AccentPrimary,
                             textColor = WingAiTokens.OnAccentPrimary,
                             onClick = onAnalyzeScreen
                         )
                         CompactPillButton(
-                            text = "Paste Chat",
+                            text = "Paste chat",
                             backgroundColor = WingAiTokens.Surface2,
                             borderColor = WingAiTokens.BorderSubtle,
                             onClick = onPasteFromClipboard
@@ -560,12 +566,11 @@ private fun ReplySuggestionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(WingAiTokens.RadiusSm)
+            .clip(WingAiTokens.RadiusMd)
             .background(WingAiTokens.Surface1)
-            .border(1.dp, WingAiTokens.BorderSubtle, WingAiTokens.RadiusSm)
-            .clickable(role = Role.Button, onClick = onInsert)
-            .padding(horizontal = 11.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+            .border(1.dp, WingAiTokens.BorderSubtle, WingAiTokens.RadiusMd)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -590,10 +595,22 @@ private fun ReplySuggestionCard(
                     letterSpacing = 0.5.sp
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        }
+        Text(
+            text = item.text,
+            color = WingAiTokens.TextPrimary,
+            fontSize = 14.sp,
+            lineHeight = 20.sp
+        )
+        // Explicit insertion avoids accidental taps while scrolling. Actions stay reachable
+        // on narrow keyboards and at increased font scales without shrinking the reply text.
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
                 CompactPillButton(
                     text = "Shorten",
-                    height = 24.dp,
+                    height = 36.dp,
                     fontSize = 11.sp,
                     backgroundColor = WingAiTokens.Surface2,
                     textColor = WingAiTokens.TextSecondary,
@@ -601,7 +618,7 @@ private fun ReplySuggestionCard(
                 )
                 CompactPillButton(
                     text = "Expand",
-                    height = 24.dp,
+                    height = 36.dp,
                     fontSize = 11.sp,
                     backgroundColor = WingAiTokens.Surface2,
                     textColor = WingAiTokens.TextSecondary,
@@ -610,7 +627,7 @@ private fun ReplySuggestionCard(
                 if (isFloatingOverlay) {
                     CompactPillButton(
                         text = "Copy",
-                        height = 24.dp,
+                        height = 36.dp,
                         fontSize = 11.sp,
                         backgroundColor = WingAiTokens.Surface2,
                         onClick = onCopy
@@ -618,21 +635,14 @@ private fun ReplySuggestionCard(
                 }
                 CompactPillButton(
                     text = "Insert",
-                    height = 24.dp,
+                    height = 36.dp,
                     fontSize = 11.sp,
                     backgroundColor = WingAiTokens.AccentPrimary,
                     borderColor = WingAiTokens.AccentPrimary,
                     textColor = WingAiTokens.OnAccentPrimary,
                     onClick = onInsert
                 )
-            }
         }
-        Text(
-            text = item.text,
-            color = WingAiTokens.TextPrimary,
-            fontSize = 13.5.sp,
-            lineHeight = 18.sp
-        )
     }
 }
 

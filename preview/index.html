@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>WingAI | A little more you.</title>
+  <link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+</head>
+<body>
+<svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+ <symbol id="spark" viewBox="0 0 24 24"><path d="m12 2 2.6 7.4L22 12l-7.4 2.6L12 22l-2.6-7.4L2 12l7.4-2.6Z" fill="currentColor"/></symbol>
+ <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+ <symbol id="back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+ <symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9S4 17 4 12V6Zm-4 9 3 3 5-6"/></symbol>
+ <symbol id="copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="3"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+</defs></svg>
+<header class="site-header">
+ <a class="brand" href="#"><span class="brand-mark"><svg><use href="#spark"/></svg></span>wingai<span class="brand-dot">.</span></a>
+ <span class="project-tag">ANDROID UI LAB <span class="small-dot"></span> LOCAL PREVIEW</span>
+ <a class="readme-link" href="../docs/ui-refresh.md">Build &amp; design notes <span aria-hidden="true">↗</span></a>
+</header>
+<main>
+ <section class="intro"><div><p class="eyebrow">LESS OVERTHINKING. MORE CONNECTING.</p><h1>Your words.<br>A little more <em>you.</em></h1><p class="intro-copy">A calmer keyboard companion. Thoughtful replies,<br class="desktop-break"> expressive themes, and room for your personality.</p></div><div class="preview-disclaimer"><span class="outline-tag">INTERACTIVE DESIGN MOCKUP</span><p>Android-sized screens, not an emulator.<br>Sample content only. No messages are sent.<br>The native Android build still needs verification.</p></div></section>
+ <section class="design-lab" aria-label="Interactive preview">
+  <aside class="controls">
+   <div class="section-number">01 / APPEARANCE</div><h2>Find your feeling.</h2><p class="muted">One app. Four different moods.</p>
+   <div class="theme-options" role="group" aria-label="Preview theme">
+    <button class="theme-choice" data-theme-choice="aurora" aria-pressed="true"><span class="swatch aurora"></span><span><strong>Aurora</strong><small>Soft violet, after dark</small></span><span class="choice-check">✓</span></button>
+    <button class="theme-choice" data-theme-choice="daylight" aria-pressed="false"><span class="swatch daylight"></span><span><strong>Daylight</strong><small>Airy, bright and focused</small></span><span class="choice-check">✓</span></button>
+    <button class="theme-choice" data-theme-choice="ocean" aria-pressed="false"><span class="swatch ocean"></span><span><strong>Ocean</strong><small>Deep blue, fresh mint</small></span><span class="choice-check">✓</span></button>
+    <button class="theme-choice" data-theme-choice="rose" aria-pressed="false"><span class="swatch rose"></span><span><strong>Rose</strong><small>A warmer kind of minimal</small></span><span class="choice-check">✓</span></button>
+   </div>
+   <div class="control-divider"></div><div class="section-number">02 / EXPLORE</div>
+   <div class="screen-tabs" role="group" aria-label="Preview screen"><button data-screen="replies" aria-pressed="true">Replies</button><button data-screen="setup" aria-pressed="false">Setup</button></div>
+   <label class="field-label" for="demo-state">Reply panel state</label><select id="demo-state"><option value="ready">Replies ready</option><option value="empty">First conversation</option><option value="loading">Finding the words</option><option value="error">Connection interrupted</option></select>
+   <p class="try-hint"><span>↳</span> Pick a tone, insert a sample reply,<br>or switch to the demo keyboard.</p>
+   <div class="scope-note"><svg><use href="#shield"/></svg><p>One theme for keyboard keys, buttons, AI, setup and account. Only the host chat stays neutral. Switch to Keyboard to see the themed keys.</p></div>
+  </aside>
+  <div class="phone-column"><div class="phone-caption"><span id="main-caption">01 — IN THE CONVERSATION</span><span>360 × 740</span></div>
+   <div class="phone" data-theme="aurora" id="conversation-phone">
+    <div class="android-status"><span>9:41</span><div class="camera"></div><span aria-label="Signal and battery">▴ ▴ ▰</span></div>
+    <div id="conversation-screen" class="phone-screen">
+     <div class="chat-header"><span class="back-icon" aria-hidden="true">‹</span><span class="avatar">J</span><div><strong>Jamie</strong><small>Sample conversation</small></div><span class="more" aria-hidden="true">⋮</span></div>
+     <div class="chat-messages"><p class="chat-date">TODAY, 9:41 AM</p><div class="message received">Hey! That little coffee spot you mentioned looks so good.</div><div class="message sent">Right? I've been meaning to try it.</div><div class="message received">Are we still on for coffee at 4?</div><span class="message-time">9:41</span></div>
+     <div class="composer"><label class="sr-only" for="draft">Sample message draft</label><input id="draft" placeholder="Your message…" autocomplete="off"><button id="send-demo" class="send-button" aria-label="Explain demo send"><svg><use href="#arrow"/></svg></button></div>
+     <div class="ime-toolbar"><span class="mini-brand"><svg><use href="#spark"/></svg> wingai</span><button id="analyze-demo">Analyze chat</button><button id="toggle-keys" aria-pressed="false">Keyboard</button></div>
+     <section class="ime-workspace" id="reply-panel" aria-label="AI reply panel"><div class="panel-title"><strong>Your reply, your way</strong><span>3 left today</span></div><div class="tone-row" role="group" aria-label="Reply tone"><button data-tone="all" aria-pressed="true">Mix it up</button><button data-tone="friendly" aria-pressed="false">Friendly</button><button data-tone="casual" aria-pressed="false">Casual</button><button data-tone="professional" aria-pressed="false">Professional</button><button data-tone="funny" aria-pressed="false">Funny</button><button data-tone="flirty" aria-pressed="false">Flirty</button><button data-tone="short" aria-pressed="false">Short</button><button data-tone="detailed" aria-pressed="false">Detailed</button></div><div id="reply-list" class="reply-list" aria-live="polite"></div></section>
+     <section class="ime-workspace key-workspace" id="keyboard-panel" aria-label="Demo keyboard" hidden><p class="keyboard-note">LOCAL KEYBOARD DEMO · NOT THE HELIBOARD RENDERER</p><div id="key-rows"></div></section>
+    </div>
+    <div id="setup-screen" class="setup-screen" hidden><div class="setup-top"><span class="mini-brand"><svg><use href="#spark"/></svg> wingai</span><span class="soft-badge">LET'S GET STARTED</span></div><div class="hero-symbol"><svg><use href="#spark"/></svg></div><h2>Good conversations<br>start here.</h2><p>Make room for your words. Set up WingAI, then add AI replies when you need a hand.</p><div class="setup-progress"><span id="setup-progress-label">0 of 3 demo steps explored</span><div><i></i><i></i><i></i></div></div><div class="setup-steps"><button data-setup="0"><span class="step-index">1</span><span><strong>Enable WingAI</strong><small>Add it to your Android keyboards</small></span><span class="step-check">↗</span></button><button data-setup="1"><span class="step-index">2</span><span><strong>Make it your keyboard</strong><small>Choose WingAI to start typing</small></span><span class="step-check">↗</span></button><button data-setup="2"><span class="step-index">3</span><span><strong>Add screen replies</strong><small>Optional · requires Android permission</small></span><span class="step-check">↗</span></button></div><p class="setup-privacy"><svg><use href="#shield"/></svg> You choose the context. You choose what to send.</p><button class="primary-wide" id="try-replies">Explore sample replies <svg><use href="#arrow"/></svg></button></div>
+    <div class="android-nav"><span></span></div>
+   </div>
+  </div>
+  <div class="phone-column account-column"><div class="phone-caption"><span>02 — MAKE IT YOURS</span><span id="theme-caption">AURORA</span></div>
+   <div class="phone" data-theme="aurora" id="account-phone">
+    <div class="android-status"><span>9:41</span><div class="camera"></div><span aria-label="Signal and battery">▴ ▴ ▰</span></div>
+    <div class="account-appbar"><span class="back-icon" aria-hidden="true">‹</span><strong>Your WingAI</strong><span class="profile-dot">W</span></div>
+    <div class="account-scroll"><div class="account-intro"><p class="eyebrow">A LITTLE MORE PERSONAL</p><h2>Make it yours.</h2><p>A fresh look for the way you connect.</p></div><div class="account-theme-grid" role="group" aria-label="Account theme"><button data-theme-choice="aurora" aria-pressed="true"><span class="theme-mini aurora"><i></i><i></i><i></i></span><strong>Aurora <span>✓</span></strong><small>Soft violet, after dark</small></button><button data-theme-choice="daylight" aria-pressed="false"><span class="theme-mini daylight"><i></i><i></i><i></i></span><strong>Daylight <span>✓</span></strong><small>Airy, bright and focused</small></button><button data-theme-choice="ocean" aria-pressed="false"><span class="theme-mini ocean"><i></i><i></i><i></i></span><strong>Ocean <span>✓</span></strong><small>Deep blue, fresh mint</small></button><button data-theme-choice="rose" aria-pressed="false"><span class="theme-mini rose"><i></i><i></i><i></i></span><strong>Rose <span>✓</span></strong><small>Warm blush, soft contrast</small></button></div><p class="theme-scope">Keys, buttons, AI, setup &amp; account. “Match keyboard” restores your original Android keyboard appearance.</p>
+     <section class="plan-card"><div class="plan-header"><span>YOUR PLAN</span><span class="soft-badge">FREE</span></div><h3>A little help, every day.</h3><p><strong>3 of 5</strong> AI requests left today</p><div class="quota" role="img" aria-label="Sample usage: 2 of 5 requests used"><i class="used"></i><i class="used"></i><i></i><i></i><i></i></div><small>Sample usage · resets at 00:00 UTC</small></section>
+     <div class="privacy-card"><svg><use href="#shield"/></svg><div><strong>You're in control.</strong><p>Review your reply before sending. Normal keyboard typing works offline.</p></div></div><button class="id-button" id="copy-id"><span><small>DEMO DEVICE ID</small><strong>wing_demo_preview</strong></span><svg><use href="#copy"/></svg></button>
+    </div><div class="android-nav"><span></span></div>
+   </div>
+  </div>
+ </section>
+ <footer><span>WINGAI BOARD / VISUAL REFRESH</span><p>Built around the existing Kotlin + Jetpack Compose app. Browser demo preferences are local and separate from Android.</p><button id="reset-demo">Reset demo</button></footer>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">Enable JavaScript for theme switching and demo interactions. This page never calls the AI backend.</p></noscript>
+</body></html>

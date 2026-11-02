@@ -1,0 +1,14 @@
+// WingAI iPhone app + keyboard extension. iOS 16+; adaptive layout for iPhone 16 Pro.
+// Set a unique reverse-domain prefix and select your team in Xcode before device installation.
+PRODUCT_BUNDLE_PREFIX = com.example.wingai
+IPHONEOS_DEPLOYMENT_TARGET = 16.0
+SWIFT_VERSION = 5.0
+TARGETED_DEVICE_FAMILY = 1
+CODE_SIGN_STYLE = Automatic
+MARKETING_VERSION = 1.0
+CURRENT_PROJECT_VERSION = 1
+
+// Optional paid-team App Group. Default build intentionally has no App Group entitlement.
+// For shared themes/account preferences, follow README and add the same capability to both targets.
+// Without a group the host and keyboard work with independent local settings and account IDs.
+WINGAI_APP_GROUP =

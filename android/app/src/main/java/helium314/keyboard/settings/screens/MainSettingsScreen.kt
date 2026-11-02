@@ -57,14 +57,14 @@ fun MainSettingsScreen(
                 Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding))
             ) {
                 Preference(
-                    name = "WingAI Account & Plan",
-                    description = "Free (5/day) or Paid (Unlimited) • View usage & User ID",
+                    name = "Your WingAI",
+                    description = "Themes, your plan and daily AI usage",
                     onClick = onClickWingAiUser,
                     icon = R.drawable.ic_settings_about
                 ) { NextScreenIcon() }
                 Preference(
-                    name = "Setup & Onboarding Checklist",
-                    description = "Keyboard activation & Select-and-Search permissions",
+                    name = "Get started",
+                    description = "Set up your keyboard and optional screen replies",
                     onClick = onClickWingAiOnboarding,
                     icon = R.drawable.ic_setup_check
                 ) { NextScreenIcon() }

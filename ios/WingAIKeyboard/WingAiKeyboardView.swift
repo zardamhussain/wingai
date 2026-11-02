@@ -1,444 +1,210 @@
 import SwiftUI
-
-#if canImport(UIKit)
 import UIKit
-#endif
 
+@MainActor
 public final class WingAiKeyboardViewModel: ObservableObject {
-    @Published public var isAiPanelOpen: Bool = false
-    @Published public var isCroppingSnapshot: Bool = false
-    @Published public var isLoading: Bool = false
-    @Published public var isShifted: Bool = false
-    @Published public var isSymbolMode: Bool = false
-    @Published public var selectedTone: String? = nil
-    @Published public var pastedContext: String? = nil
-    @Published public var rawSnapshotData: Data? = nil
-    @Published public var croppedPreviewData: Data? = nil
-    @Published public var suggestions: [ReplyItem] = []
-    @Published public var errorMessage: String? = nil
-    @Published public var currentWordPrefix: String = ""
-
-    private let apiClient = WingAiApiClient()
-
-    private let hinglishAndEnglishLexicon: [String] = [
-        "haan", "nahi", "kya", "kaise", "bhai", "yaar", "acha", "theek", "hai", "milte",
-        "kal", "aaj", "abhi", "chal", "chalo", "batao", "dekhte", "pakka", "zaroor", "bilkul",
-        "shukriya", "dhanyawad", "karo", "karna", "raha", "rahi", "baad", "pehle", "kaam",
-        "hello", "sounds", "great", "thanks", "tomorrow", "meeting", "perfect", "sure", "okay"
-    ]
-
+    @Published public var hasFullAccess = false
+    @Published public var needsGlobe = true
+    @Published public var isAiPanelOpen = false
+    @Published public var showsThemes = false
+    @Published public var shifted = false
+    @Published public var capsLock = false
+    @Published public var symbolPage = 0
     public init() {}
+}
 
-    public var typingPredictions: [String] {
-        let prefix = currentWordPrefix.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prefix.isEmpty else {
-            return ["haan", "theek hai", "sounds good"]
-        }
-        let matches = hinglishAndEnglishLexicon.filter { $0.hasPrefix(prefix) && $0 != prefix }
-        return Array(([prefix] + matches).prefix(3))
-    }
+/// A real textDocumentProxy keyboard, not a simulated messenger. No screenshot/host-screen access.
+@MainActor
+public struct WingAiKeyboardRootView: View {
+    @Environment(\.wingPalette) private var palette
+    @ObservedObject var state: WingAiKeyboardViewModel
+    @ObservedObject var session: WingReplySession
+    @ObservedObject var settings: WingAiSettings
+    let onInsert: (String) -> Void
+    let onDelete: () -> Void
+    let onGlobeEvent: (UIView, UIEvent) -> Void
+    let onDismiss: () -> Void
+    let onPaste: () -> String?
+    let onGenerate: () -> Void
 
-    public func startSelectAndSearch(clipboardImageData: Data?) {
-        errorMessage = nil
-        // 1. Check Shared App Group container (from Back-Tap AppIntent or 1-Frame ReplayKit Broadcast)
-        if let groupData = AppGroupStore.shared.consumePendingSnapshotData() {
-            rawSnapshotData = groupData
-            isCroppingSnapshot = true
-            isAiPanelOpen = true
-            return
-        }
-        // 2. Check UIPasteboard image (from iOS Screenshot -> Done -> Copy and Delete)
-        if let clipData = clipboardImageData {
-            rawSnapshotData = clipData
-            isCroppingSnapshot = true
-            isAiPanelOpen = true
-            return
-        }
-        // 3. Guide user if no screenshot is in RAM yet
-        isAiPanelOpen = true
-        errorMessage = "Double-tap the back of your iPhone (or press Screenshot → Copy & Delete), then tap Select."
-    }
+    private let letters = [Array("qwertyuiop"), Array("asdfghjkl"), Array("zxcvbnm")]
+    private let numbers = [Array("1234567890"), Array("-/:;()$&@\""), Array(".,?!'#%")]
+    private let symbols = [Array("[]{}#%^*+="), Array("_\\|~<>€£¥•"), Array(".,?!'`;")]
 
-    public func confirmCrop(normalizedRect: CGRect, croppedJpegData: Data) {
-        isCroppingSnapshot = false
-        rawSnapshotData = nil
-        croppedPreviewData = croppedJpegData
-        let base64 = croppedJpegData.base64EncodedString()
-        triggerAnalyze(imageBase64: base64, conversationText: pastedContext)
-    }
-
-    public func cancelCrop() {
-        isCroppingSnapshot = false
-        rawSnapshotData = nil
-    }
-
-    public func analyzePastedChat(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            errorMessage = "Clipboard does not contain chat text."
-            isAiPanelOpen = true
-            return
-        }
-        pastedContext = trimmed
-        isAiPanelOpen = true
-        triggerAnalyze(
-            imageBase64: croppedPreviewData?.base64EncodedString(),
-            conversationText: trimmed
-        )
-    }
-
-    public func selectTone(_ tone: String?) {
-        selectedTone = (selectedTone == tone) ? nil : tone
-        if croppedPreviewData != nil || pastedContext != nil {
-            triggerAnalyze(
-                imageBase64: croppedPreviewData?.base64EncodedString(),
-                conversationText: pastedContext
-            )
-        }
-    }
-
-    public func triggerAnalyze(imageBase64: String?, conversationText: String?) {
-        isLoading = true
-        errorMessage = nil
-        let tone = selectedTone
-        Task { @MainActor in
-            do {
-                let response = try await apiClient.analyzeContext(
-                    imageBase64: imageBase64,
-                    conversationText: conversationText,
-                    tone: tone
-                )
-                self.isLoading = false
-                self.suggestions = response.replies
-                if response.contextStatus == "insufficient" {
-                    self.errorMessage = response.message ?? "Conversation is not clear. Select a clearer chat section."
+    public var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Label("wingai", systemImage: "sparkles").font(.subheadline.bold()).foregroundColor(palette.accentPrimary)
+                Spacer(minLength: 0)
+                Button { state.showsThemes.toggle() } label: {
+                    Image(systemName: "paintpalette").frame(width: 40, height: 40)
+                }.accessibilityLabel("Keyboard themes")
+                Button {
+                    state.showsThemes = false; state.isAiPanelOpen.toggle()
+                } label: {
+                    Text(state.isAiPanelOpen ? "Keys" : "Replies").font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 12).frame(minHeight: 40)
+                        .background(palette.accentPrimaryContainer).clipShape(Capsule())
                 }
-            } catch {
-                self.isLoading = false
-                self.errorMessage = error.localizedDescription
+            }
+            .buttonStyle(.plain)
+
+            if state.showsThemes {
+                ScrollView { WingAiThemePicker(settings: settings).padding(4) }
+            } else if state.isAiPanelOpen {
+                replyPanel
+            } else {
+                keyGrid
+            }
+
+            // The switcher remains accessible from keys, replies, errors and theme selection.
+            HStack(spacing: 8) {
+                if state.needsGlobe {
+                    WingGlobeButton(tint: UIColor(palette.textPrimary), onEvent: onGlobeEvent)
+                        .frame(width: 48, height: 40)
+                }
+                Text(state.hasFullAccess ? "Online AI requires your consent" : "Offline typing · Full Access off")
+                    .font(.system(size: 10)).foregroundColor(palette.textSecondary).lineLimit(2)
+                Spacer(minLength: 0)
+                Button(action: onDismiss) { Image(systemName: "keyboard.chevron.compact.down").frame(width: 44, height: 40) }
+                    .buttonStyle(.plain).accessibilityLabel("Hide keyboard")
             }
         }
+        .padding(.horizontal, 6).padding(.top, 4)
+        .background(palette.bgCanvas)
+        .onChange(of: settings.hasServiceConsent) { allowed in if !allowed { session.cancel() } }
+        .onChange(of: state.hasFullAccess) { allowed in if !allowed { session.clear() } }
+        .onChange(of: settings.backendURL) { _ in session.forgetAccount() }
+    }
+
+    private var replyPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                if !state.hasFullAccess {
+                    Text("Your keyboard works offline.").font(.headline)
+                    Text("For paste and online AI, enable Allow Full Access in iPhone Settings > General > Keyboard > Keyboards > WingAI. No chat is read automatically.")
+                        .font(.caption).foregroundColor(palette.textSecondary)
+                } else {
+                    HStack {
+                        CompactPillButton(title: "Paste chat") {
+                            session.cancel()
+                            if let text = onPaste(), !text.isEmpty { session.context = text; session.error = nil }
+                            else { session.error = "Copy a conversation first. No clipboard text was available." }
+                        }
+                        CompactPillButton(title: "Clear") { session.clear() }
+                    }
+                    if !session.context.isEmpty {
+                        WingAiSurfaceCard {
+                            Text("Context to send").font(.caption.bold())
+                            Text(session.context).font(.caption).textSelection(.enabled)
+                            Text("\(session.context.count) / 12,000 characters").font(.caption2)
+                        }
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            toneButton(nil)
+                            ForEach(WingTone.allCases, id: \.rawValue) { tone in toneButton(tone) }
+                        }
+                    }
+                    if !settings.hasServiceConsent { WingServiceConsentView(settings: settings) }
+                    if session.isLoading {
+                        HStack { ProgressView("Finding the words..."); CompactPillButton(title: "Cancel") { session.cancel() } }
+                    } else {
+                        CompactPillButton(title: "Analyze chat", isPrimary: true,
+                                          isDisabled: !settings.hasServiceConsent || !session.hasContext) { onGenerate() }
+                    }
+                    Text("Screenshots: select one in the WingAI app instead. A keyboard cannot see the conversation above it.")
+                        .font(.caption2).foregroundColor(palette.textSecondary)
+                }
+                if let error = session.error { Text(error).font(.caption).foregroundColor(palette.accentRose) }
+                ForEach(Array(session.replies.enumerated()), id: \.offset) { _, reply in
+                    WingAiSurfaceCard {
+                        Text(reply.tone.capitalized).font(.caption.bold()).foregroundColor(palette.accentPrimary)
+                        Text(reply.text).font(.subheadline)
+                        CompactPillButton(title: "Insert", isPrimary: true) {
+                            onInsert(reply.text); state.isAiPanelOpen = false
+                        }
+                    }
+                }
+            }.padding(.vertical, 4)
+        }
+    }
+
+    private func toneButton(_ tone: WingTone?) -> some View {
+        CompactPillButton(title: tone?.displayName ?? "Mix it up", isPrimary: session.selectedTone == tone) {
+            session.cancel(); session.selectedTone = tone
+        }.accessibilityAddTraits(session.selectedTone == tone ? .isSelected : [])
+    }
+
+    private var keyGrid: some View {
+        let rows = state.symbolPage == 0 ? letters : (state.symbolPage == 1 ? numbers : symbols)
+        return VStack(spacing: 6) {
+            HStack(spacing: 4) { ForEach(Array(rows[0].enumerated()), id: \.offset) { _, key in characterKey(String(key)) } }
+            HStack(spacing: 4) { ForEach(Array(rows[1].enumerated()), id: \.offset) { _, key in characterKey(String(key)) } }
+                .padding(.horizontal, 12)
+            HStack(spacing: 4) {
+                Button {
+                    if state.symbolPage > 0 { state.symbolPage = state.symbolPage == 1 ? 2 : 1 }
+                    else { state.shifted.toggle(); state.capsLock = false }
+                } label: {
+                    Group {
+                        if state.symbolPage > 0 { Text(state.symbolPage == 1 ? "#+=" : "123").font(.system(size: 12)) }
+                        else { Image(systemName: state.capsLock ? "capslock.fill" : (state.shifted ? "shift.fill" : "shift")) }
+                    }.frame(width: 36).frame(maxHeight: .infinity).background(palette.surface2).clipShape(RoundedRectangle(cornerRadius: 7))
+                }
+                .accessibilityLabel(state.symbolPage > 0 ? "More symbols" : "Shift; hold for caps lock")
+                .onLongPressGesture { if state.symbolPage == 0 { state.capsLock.toggle(); state.shifted = state.capsLock } }
+                ForEach(Array(rows[2].enumerated()), id: \.offset) { _, key in characterKey(String(key)) }
+                Button(action: onDelete) {
+                    Image(systemName: "delete.left").frame(width: 36).frame(maxHeight: .infinity)
+                        .background(palette.surface2).clipShape(RoundedRectangle(cornerRadius: 7))
+                }.accessibilityLabel("Delete")
+            }
+            HStack(spacing: 5) {
+                Button { state.symbolPage = state.symbolPage == 0 ? 1 : 0 } label: {
+                    Text(state.symbolPage == 0 ? "123" : "ABC").font(.system(size: 13, weight: .semibold))
+                        .frame(width: 48).frame(maxHeight: .infinity).background(palette.surface2).clipShape(RoundedRectangle(cornerRadius: 7))
+                }.accessibilityLabel(state.symbolPage == 0 ? "Numbers and symbols" : "Letters")
+                Button { onInsert(" ") } label: {
+                    Text("space").font(.system(size: 14)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(palette.accentPrimaryContainer).clipShape(RoundedRectangle(cornerRadius: 7))
+                }.accessibilityLabel("Space")
+                Button { onInsert("\n") } label: {
+                    Image(systemName: "return").frame(width: 54).frame(maxHeight: .infinity)
+                        .foregroundColor(palette.onAccentPrimary).background(palette.accentPrimary).clipShape(RoundedRectangle(cornerRadius: 7))
+                }.accessibilityLabel("Return")
+            }
+        }.buttonStyle(.plain)
+    }
+
+    private func characterKey(_ character: String) -> some View {
+        let label = state.symbolPage == 0 && (state.shifted || state.capsLock) ? character.uppercased() : character
+        return Button {
+            onInsert(label)
+            if !state.capsLock { state.shifted = false }
+        } label: {
+            Text(label).font(.system(size: 20)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.surface1).clipShape(RoundedRectangle(cornerRadius: 7))
+        }.accessibilityLabel(label)
     }
 }
 
-public struct WingAiKeyboardRootView: View {
-    @ObservedObject public var viewModel: WingAiKeyboardViewModel
-    public let onInsertText: (String) -> Void
-    public let onDeleteBackward: () -> Void
-    public let onNextKeyboard: () -> Void
-    public let onReadClipboardImage: () -> Data?
-    public let onReadClipboardText: () -> String?
-    public let onCropImageData: (Data, CGRect) -> Data?
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private let row1 = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
-    private let row2 = ["a", "s", "d", "f", "g", "h", "j", "k", "l"]
-    private let row3 = ["z", "x", "c", "v", "b", "n", "m"]
-    private let numRow1 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
-    private let numRow2 = ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""]
-    private let numRow3 = [".", ",", "?", "!", "'", "#", "%"]
-
-    public init(
-        viewModel: WingAiKeyboardViewModel,
-        onInsertText: @escaping (String) -> Void,
-        onDeleteBackward: @escaping () -> Void,
-        onNextKeyboard: @escaping () -> Void,
-        onReadClipboardImage: @escaping () -> Data?,
-        onReadClipboardText: @escaping () -> String?,
-        onCropImageData: @escaping (Data, CGRect) -> Data?
-    ) {
-        self.viewModel = viewModel
-        self.onInsertText = onInsertText
-        self.onDeleteBackward = onDeleteBackward
-        self.onNextKeyboard = onNextKeyboard
-        self.onReadClipboardImage = onReadClipboardImage
-        self.onReadClipboardText = onReadClipboardText
-        self.onCropImageData = onCropImageData
+/// UIKit's all-touch-events input-mode switcher preserves tap and hold-to-list behavior.
+private struct WingGlobeButton: UIViewRepresentable {
+    let tint: UIColor
+    let onEvent: (UIView, UIEvent) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(onEvent: onEvent) }
+    func makeUIView(context: Context) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "globe"), for: .normal)
+        button.accessibilityLabel = "Next keyboard"
+        button.addTarget(context.coordinator, action: #selector(Coordinator.handle(_:event:)), for: .allTouchEvents)
+        return button
     }
-
-    public var body: some View {
-        let palette = WingAiPalette.forScheme(colorScheme)
-        VStack(spacing: 0) {
-            // Top Suggestion + WingAI Quick Strip
-            HStack(spacing: 6) {
-                CompactPillButton(
-                    title: "Select",
-                    isPrimary: viewModel.croppedPreviewData != nil
-                ) {
-                    viewModel.startSelectAndSearch(clipboardImageData: onReadClipboardImage())
-                }
-
-                // Word predictions when typing
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(viewModel.typingPredictions, id: \.self) { word in
-                            Button {
-                                applyPrediction(word)
-                            } label: {
-                                Text(word)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(palette.textPrimary)
-                                    .padding(.horizontal, 10)
-                                    .frame(height: 28)
-                                    .background(palette.surface1)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(palette.borderSubtle, lineWidth: 1)
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                CompactPillButton(
-                    title: viewModel.isAiPanelOpen ? "Keys" : "AI",
-                    isPrimary: viewModel.isAiPanelOpen
-                ) {
-                    viewModel.isAiPanelOpen.toggle()
-                    viewModel.isCroppingSnapshot = false
-                }
-            }
-            .padding(.horizontal, 8)
-            .frame(height: 40)
-            .background(palette.bgCanvas)
-
-            if viewModel.isAiPanelOpen {
-                if viewModel.isCroppingSnapshot, let rawData = viewModel.rawSnapshotData {
-                    SelectAndSearchCropView(
-                        onCancel: { viewModel.cancelCrop() },
-                        onConfirmCrop: { rect in
-                            let cropped = onCropImageData(rawData, rect) ?? rawData
-                            viewModel.confirmCrop(normalizedRect: rect, croppedJpegData: cropped)
-                        }
-                    )
-                    .frame(height: 236)
-                    .background(palette.bgCanvas)
-                } else {
-                    aiControlPanel(palette: palette)
-                        .frame(height: 236)
-                        .background(palette.bgCanvas)
-                }
-            } else {
-                qwertyGrid(palette: palette)
-                    .frame(height: 216)
-                    .background(palette.bgCanvas)
-            }
-        }
-        .background(palette.bgCanvas)
-    }
-
-    @ViewBuilder
-    private func aiControlPanel(palette: WingAiPalette) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Tone Selector Bar + Paste Chat
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        CompactPillButton(title: "Paste Chat") {
-                            viewModel.analyzePastedChat(onReadClipboardText() ?? "")
-                        }
-                        ForEach(WingTone.allCases, id: \.rawValue) { tone in
-                            let active = viewModel.selectedTone == tone.rawValue
-                            CompactPillButton(
-                                title: tone.displayName,
-                                isPrimary: active
-                            ) {
-                                viewModel.selectTone(tone.rawValue)
-                            }
-                        }
-                    }
-                }
-
-                if let err = viewModel.errorMessage {
-                    WingAiSurfaceCard(borderColor: palette.accentRose) {
-                        Text(err)
-                            .font(.system(size: 12))
-                            .foregroundColor(palette.textPrimary)
-                    }
-                }
-
-                if viewModel.isLoading {
-                    ForEach(0..<3, id: \.self) { index in
-                        WingAiSurfaceCard {
-                            HStack {
-                                WingAiSkeletonBox(height: 16, cornerRadius: 5)
-                                    .frame(width: 68)
-                                Spacer()
-                                WingAiSkeletonBox(height: 12, cornerRadius: 4)
-                                    .frame(width: 48)
-                            }
-                            WingAiSkeletonBox(height: 13, cornerRadius: 4)
-                            WingAiSkeletonBox(height: 13, cornerRadius: 4)
-                                .frame(maxWidth: index == 1 ? 180 : 230)
-                        }
-                    }
-                } else if viewModel.suggestions.isEmpty {
-                    WingAiSurfaceCard {
-                        Text("Tap Select above to crop any chat screenshot, or tap Paste Chat to generate 3 instant replies.")
-                            .font(.system(size: 12.5))
-                            .foregroundColor(palette.textSecondary)
-                    }
-                } else {
-                    ForEach(viewModel.suggestions) { reply in
-                        Button {
-                            onInsertText(reply.text)
-                            viewModel.isAiPanelOpen = false
-                        } label: {
-                            WingAiSurfaceCard {
-                                HStack {
-                                    Text(reply.tone.uppercased())
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(palette.accentPrimary)
-                                    Spacer()
-                                    Text("Tap to insert")
-                                        .font(.system(size: 10.5, weight: .medium))
-                                        .foregroundColor(palette.textMuted)
-                                }
-                                Text(reply.text)
-                                    .font(.system(size: 13.5, weight: .medium))
-                                    .foregroundColor(palette.textPrimary)
-                                    .multilineTextAlignment(.leading)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-        }
-    }
-
-    @ViewBuilder
-    private func qwertyGrid(palette: WingAiPalette) -> some View {
-        let r1 = viewModel.isSymbolMode ? numRow1 : row1
-        let r2 = viewModel.isSymbolMode ? numRow2 : row2
-        let r3 = viewModel.isSymbolMode ? numRow3 : row3
-
-        VStack(spacing: 7) {
-            HStack(spacing: 5) {
-                ForEach(r1, id: \.self) { key in
-                    letterKeyButton(key, palette: palette)
-                }
-            }
-            HStack(spacing: 5) {
-                ForEach(r2, id: \.self) { key in
-                    letterKeyButton(key, palette: palette)
-                }
-            }
-            HStack(spacing: 5) {
-                functionalKeyButton(
-                    label: viewModel.isSymbolMode ? "#+=" : (viewModel.isShifted ? "⬆" : "⇧"),
-                    width: 42,
-                    palette: palette
-                ) {
-                    viewModel.isShifted.toggle()
-                }
-                ForEach(r3, id: \.self) { key in
-                    letterKeyButton(key, palette: palette)
-                }
-                functionalKeyButton(label: "⌫", width: 42, palette: palette) {
-                    if !viewModel.currentWordPrefix.isEmpty {
-                        viewModel.currentWordPrefix.removeLast()
-                    }
-                    onDeleteBackward()
-                }
-            }
-            HStack(spacing: 6) {
-                functionalKeyButton(
-                    label: viewModel.isSymbolMode ? "ABC" : "123",
-                    width: 48,
-                    palette: palette
-                ) {
-                    viewModel.isSymbolMode.toggle()
-                }
-                functionalKeyButton(label: "🌐", width: 40, palette: palette) {
-                    onNextKeyboard()
-                }
-                // Spacebar with clean "English" label (no Hinglish debug clutter)
-                Button {
-                    viewModel.currentWordPrefix = ""
-                    onInsertText(" ")
-                } label: {
-                    Text("English")
-                        .font(.system(size: 13.5, weight: .medium))
-                        .foregroundColor(palette.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(palette.surface1)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(palette.borderSubtle, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-
-                functionalKeyButton(label: "↵", width: 64, isAccent: true, palette: palette) {
-                    viewModel.currentWordPrefix = ""
-                    onInsertText("\n")
-                }
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
-    }
-
-    private func letterKeyButton(_ raw: String, palette: WingAiPalette) -> some View {
-        let label = (viewModel.isShifted && !viewModel.isSymbolMode) ? raw.uppercased() : raw
-        return Button {
-            viewModel.currentWordPrefix.append(label)
-            onInsertText(label)
-            if viewModel.isShifted {
-                viewModel.isShifted = false
-            }
-        } label: {
-            Text(label)
-                .font(.system(size: 18.5, weight: .regular))
-                .foregroundColor(palette.textPrimary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(palette.surface1)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(palette.borderSubtle, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func functionalKeyButton(
-        label: String,
-        width: CGFloat,
-        isAccent: Bool = false,
-        palette: WingAiPalette,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 14.5, weight: .semibold))
-                .foregroundColor(isAccent ? palette.onAccentPrimary : palette.textPrimary)
-                .frame(width: width, height: 42)
-                .background(isAccent ? palette.accentPrimary : palette.surface2)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isAccent ? palette.accentPrimary : palette.borderSubtle, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func applyPrediction(_ word: String) {
-        let count = viewModel.currentWordPrefix.count
-        for _ in 0..<count {
-            onDeleteBackward()
-        }
-        viewModel.currentWordPrefix = ""
-        onInsertText(word + " ")
+    func updateUIView(_ button: UIButton, context: Context) { button.tintColor = tint; context.coordinator.onEvent = onEvent }
+    final class Coordinator: NSObject {
+        var onEvent: (UIView, UIEvent) -> Void
+        init(onEvent: @escaping (UIView, UIEvent) -> Void) { self.onEvent = onEvent }
+        @objc func handle(_ sender: UIButton, event: UIEvent) { onEvent(sender, event) }
     }
 }

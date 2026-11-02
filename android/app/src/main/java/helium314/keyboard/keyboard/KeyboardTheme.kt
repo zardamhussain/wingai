@@ -32,6 +32,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.EnumMap
 import androidx.core.graphics.toColorInt
+import com.wingai.keyboard.settings.WingAiAppearance
+import com.wingai.keyboard.settings.WingAiKeyboardAppearance
+import com.wingai.keyboard.ui.wingAiKeyboardColors
 
 class KeyboardTheme // Note: The themeId should be aligned with "themeId" attribute of Keyboard style in values/themes-<style>.xml.
 private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
@@ -115,6 +118,9 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
 
         @JvmStatic
         fun getKeyboardTheme(context: Context): KeyboardTheme {
+            if (usesWingAiPreset(context)) {
+                return KEYBOARD_THEMES.first { it.themeId == THEME_ID_ROUNDED_BASE_BORDER }
+            }
             val prefs = context.prefs()
             val style = prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE)
             val borders = if (prefs.contains(Settings.PREF_THEME_KEY_BORDERS)) {
@@ -137,6 +143,15 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
 
         @JvmStatic
         fun getColorsForCurrentTheme(context: Context): Colors {
+            if (usesWingAiPreset(context)) {
+                wingAiKeyboardColors(WingAiKeyboardAppearance.current(context))?.let { return it }
+            }
+            return getHeliBoardColors(context)
+        }
+
+        // Match keyboard resolves the saved base colors directly, even while the derived
+        // native preset snapshot is being refreshed after a DataStore change.
+        fun getHeliBoardColors(context: Context): Colors {
             val prefs = context.prefs()
             val isNight = SettingsActivity.forceNight
                 ?: (ResourceUtils.isNight(context.resources) && prefs.getBoolean(Settings.PREF_THEME_DAY_NIGHT, Defaults.PREF_THEME_DAY_NIGHT))
@@ -148,6 +163,10 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
 
             return getThemeColors(themeName!!, themeStyle!!, context, prefs, isNight)
         }
+
+        private fun usesWingAiPreset(context: Context): Boolean =
+            SettingsActivity.forceTheme == null && SettingsActivity.forceNight == null &&
+                WingAiKeyboardAppearance.current(context) != WingAiAppearance.KEYBOARD
 
         private fun getThemeColors(themeName: String, themeStyle: String, context: Context, prefs: SharedPreferences, isNight: Boolean): Colors {
             val hasBorders = prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS)

@@ -13,6 +13,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +58,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import helium314.keyboard.keyboard.KeyboardTheme
 import helium314.keyboard.latin.common.ColorType
+import com.wingai.keyboard.settings.SettingsRepository
+import com.wingai.keyboard.settings.WingAiAppearance
+import com.wingai.keyboard.settings.WingAiSettings
 
 @Immutable
 data class WingAiPalette(
@@ -106,6 +112,7 @@ private val DefaultDarkPalette = WingAiPalette(
 )
 
 val LocalWingAiPalette = staticCompositionLocalOf { DefaultDarkPalette }
+val LocalWingAiAppearance = staticCompositionLocalOf { WingAiAppearance.KEYBOARD }
 
 /**
  * Dynamic tokens synced with the active keyboard theme (Light, Dark, Dynamic Material You, etc.)
@@ -137,11 +144,11 @@ object WingAiTokens {
     val TextSecondary: Color @Composable get() = LocalWingAiPalette.current.textSecondary
     val TextMuted: Color @Composable get() = LocalWingAiPalette.current.textMuted
 
-    // Rounded key-cap geometry matching KeyboardTheme.STYLE_ROUNDED
-    val RadiusSm = RoundedCornerShape(8.dp)
-    val RadiusMd = RoundedCornerShape(10.dp)
-    val RadiusLg = RoundedCornerShape(14.dp)
-    val RadiusPill = RoundedCornerShape(8.dp)
+    // Softer surfaces; preserve the fixed IME height rather than expanding the keyboard.
+    val RadiusSm = RoundedCornerShape(10.dp)
+    val RadiusMd = RoundedCornerShape(18.dp)
+    val RadiusLg = RoundedCornerShape(24.dp)
+    val RadiusPill = RoundedCornerShape(50)
 
     @Composable
     fun toneColor(tone: String): Color {
@@ -164,7 +171,7 @@ private fun rememberKeyboardMatchedPalette(): WingAiPalette {
     val context = LocalContext.current
     return remember(context.resources.configuration.uiMode) {
         runCatching {
-            val kbColors = KeyboardTheme.getColorsForCurrentTheme(context)
+            val kbColors = KeyboardTheme.getHeliBoardColors(context)
             val mainBg = Color(kbColors.get(ColorType.MAIN_BACKGROUND)).copy(alpha = 1f)
             val keyBg = Color(kbColors.get(ColorType.KEY_BACKGROUND)).copy(alpha = 1f)
             val funcBg = Color(kbColors.get(ColorType.FUNCTIONAL_KEY_BACKGROUND)).copy(alpha = 1f)
@@ -221,39 +228,55 @@ private fun rememberKeyboardMatchedPalette(): WingAiPalette {
 }
 
 @Composable
-fun WingAiTheme(content: @Composable () -> Unit) {
-    val palette = rememberKeyboardMatchedPalette()
-    val scheme = if (palette.isLight) {
-        lightColorScheme(
-            primary = palette.accentPrimary,
-            onPrimary = palette.onAccentPrimary,
-            primaryContainer = palette.accentPrimaryContainer,
-            secondary = palette.accentCyan,
-            background = palette.bgCanvas,
-            surface = palette.surface1,
-            surfaceVariant = palette.surface2,
-            onBackground = palette.textPrimary,
-            onSurface = palette.textPrimary,
-            onSurfaceVariant = palette.textSecondary,
-            error = palette.accentRose
-        )
+fun WingAiTheme(
+    appearance: WingAiAppearance? = null,
+    content: @Composable () -> Unit
+) {
+    // Explicit themes keep Android Studio previews deterministic and avoid DataStore/JNI there.
+    val inspection = LocalInspectionMode.current
+    val resolvedAppearance = if (appearance != null) {
+        appearance
+    } else if (inspection) {
+        WingAiAppearance.AURORA
     } else {
-        darkColorScheme(
-            primary = palette.accentPrimary,
-            onPrimary = palette.onAccentPrimary,
-            primaryContainer = palette.accentPrimaryContainer,
-            secondary = palette.accentCyan,
-            background = palette.bgCanvas,
-            surface = palette.surface1,
-            surfaceVariant = palette.surface2,
-            onBackground = palette.textPrimary,
-            onSurface = palette.textPrimary,
-            onSurfaceVariant = palette.textSecondary,
-            error = palette.accentRose
-        )
+        val context = LocalContext.current.applicationContext
+        val repository = remember(context) { SettingsRepository(context) }
+        val settings by repository.settingsFlow.collectAsState(initial = WingAiSettings())
+        settings.appearance
     }
+    val palette = wingAiPresetPalette(resolvedAppearance)
+        ?: if (inspection) DefaultDarkPalette else rememberKeyboardMatchedPalette()
+    val baseScheme = if (palette.isLight) lightColorScheme() else darkColorScheme()
+    // Include M3 container roles used by the existing settings app bar, not only custom cards.
+    val scheme = baseScheme.copy(
+        primary = palette.accentPrimary,
+        onPrimary = palette.onAccentPrimary,
+        primaryContainer = palette.accentPrimaryContainer,
+        onPrimaryContainer = palette.textPrimary,
+        secondary = palette.accentCyan,
+        background = palette.bgCanvas,
+        surface = palette.surface1,
+        surfaceVariant = palette.surface2,
+        surfaceContainerLowest = palette.bgCanvas,
+        surfaceContainerLow = palette.surface0,
+        surfaceContainer = palette.surface1,
+        surfaceContainerHigh = palette.surface2,
+        surfaceContainerHighest = palette.surface3,
+        surfaceTint = palette.accentPrimary,
+        onBackground = palette.textPrimary,
+        onSurface = palette.textPrimary,
+        onSurfaceVariant = palette.textSecondary,
+        outline = palette.borderStrong,
+        outlineVariant = palette.borderSubtle,
+        error = palette.accentRose,
+        errorContainer = palette.accentRoseContainer,
+        onErrorContainer = palette.textPrimary
+    )
 
-    CompositionLocalProvider(LocalWingAiPalette provides palette) {
+    CompositionLocalProvider(
+        LocalWingAiPalette provides palette,
+        LocalWingAiAppearance provides resolvedAppearance
+    ) {
         MaterialTheme(
             colorScheme = scheme,
             content = content
@@ -270,8 +293,8 @@ fun CompactPillButton(
     backgroundColor: Color = WingAiTokens.Surface1,
     textColor: Color = WingAiTokens.TextPrimary,
     borderColor: Color = WingAiTokens.BorderSubtle,
-    height: Dp = 28.dp,
-    fontSize: TextUnit = 11.5.sp,
+    height: Dp = 36.dp,
+    fontSize: TextUnit = 12.sp,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -354,11 +377,12 @@ fun WingAiToneChip(
                 scaleX = scale
                 scaleY = scale
             }
-            .height(30.dp)
-            .clip(WingAiTokens.RadiusSm)
+            .height(36.dp)
+            .clip(WingAiTokens.RadiusPill)
             .background(bgColor)
-            .border(1.dp, borderColor, WingAiTokens.RadiusSm)
-            .clickable(
+            .border(1.dp, borderColor, WingAiTokens.RadiusPill)
+            .selectable(
+                selected = selected,
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.RadioButton,

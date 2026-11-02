@@ -1,0 +1,2 @@
+# Browser smoke tests only; opening the preview itself needs no dependencies.
+websocket-client==1.9.2

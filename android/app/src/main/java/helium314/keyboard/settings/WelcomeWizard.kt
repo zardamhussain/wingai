@@ -200,14 +200,14 @@ private fun WelcomeWizardContent(
             // Hero Title & Subtitle
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "Set up your AI keyboard",
+                    text = "Good conversations start here.",
                     color = WingAiTokens.TextPrimary,
-                    fontSize = 26.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 32.sp
+                    lineHeight = 36.sp
                 )
                 Text(
-                    text = "Complete these 3 quick steps to enable WingAI Board and Circle-to-Search AI replies.",
+                    text = "Make room for your words. Set up WingAI, then add optional screen replies when you need a hand.",
                     color = WingAiTokens.TextSecondary,
                     fontSize = 13.5.sp,
                     lineHeight = 19.sp
@@ -261,9 +261,9 @@ private fun WelcomeWizardContent(
             // Step 1 Card: Enable Keyboard
             OnboardingStepCard(
                 stepNumber = "01",
-                title = "Enable WingAI Board",
-                description = "Toggle on WingAI Board in Android's on-screen keyboard list.",
-                actionLabel = "Enable in Settings",
+                title = "Enable WingAI",
+                description = "Add WingAI Board in Android's on-screen keyboard settings.",
+                actionLabel = "Open keyboard settings",
                 isCompleted = isImeEnabled,
                 isActive = !isImeEnabled,
                 onAction = onEnableIme
@@ -272,9 +272,9 @@ private fun WelcomeWizardContent(
             // Step 2 Card: Switch Active Input Method
             OnboardingStepCard(
                 stepNumber = "02",
-                title = "Select as Active Keyboard",
-                description = "Switch your active input method to WingAI Board.",
-                actionLabel = "Switch Keyboard",
+                title = "Make it your keyboard",
+                description = "Choose WingAI Board to start typing in your favorite apps.",
+                actionLabel = "Choose WingAI",
                 isCompleted = isImeCurrent,
                 isActive = isImeEnabled && !isImeCurrent,
                 onAction = onSelectIme
@@ -283,9 +283,9 @@ private fun WelcomeWizardContent(
             // Step 3 Card: Enable Instant Select & Search
             OnboardingStepCard(
                 stepNumber = "03",
-                title = "Enable Select & Search",
-                description = "Allows instant in-memory region snapshots without screen-share dialogs or saving screenshots to your gallery.",
-                actionLabel = "Enable Select & Search",
+                title = "Add screen replies",
+                description = "Optional: enable the accessibility service to select chat areas for AI replies. Selected content is sent to your configured AI service when you request replies.",
+                actionLabel = "Review permission",
                 isCompleted = isSnapshotEnabled,
                 isActive = isImeEnabled && isImeCurrent && !isSnapshotEnabled,
                 onAction = onEnableSnapshot
@@ -357,6 +357,7 @@ private fun OnboardingStepCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -426,7 +427,7 @@ private fun OnboardingStepCard(
                     backgroundColor = if (isActive) WingAiTokens.AccentPrimary else WingAiTokens.Surface2,
                     borderColor = if (isActive) WingAiTokens.AccentPrimary else WingAiTokens.BorderSubtle,
                     textColor = if (isActive) WingAiTokens.OnAccentPrimary else WingAiTokens.TextPrimary,
-                    height = 32.dp,
+                    height = 48.dp,
                     onClick = onAction
                 )
             }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-01T17:39:15.728Z" hostname="SITL-IT7978.local" time="3.446">
+  <properties/>
+  <testcase name="everyNativeColorRoleUsesTheSelectedPalette" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="1.308"/>
+  <testcase name="savedPresetAndUnknownValuesAreSafeAcrossRendererRecreation" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="0.014"/>
+  <testcase name="pressedKeyDrawableRetainsFeedbackAndReturnsToNormal" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="2.076"/>
+  <testcase name="matchKeyboardRestoresPreviouslySavedHeliBoardSettings" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="0.03"/>
+  <testcase name="nativeAppearancePreviewCanStillShowTheOriginalTheme" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="0.01"/>
+  <testcase name="keyLabelsAndIconsHaveReadableContrast" classname="com.wingai.keyboard.ui.WingAiKeyboardColorsTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

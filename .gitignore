@@ -3,6 +3,9 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+.build-tools/
+android/app/.cxx/
+artifacts/apk/
 *.iml
 .idea/
 *.jks
@@ -20,4 +23,10 @@ worker/.dev.vars
 
 # iOS / SwiftPM build artifacts
 ios/.build/
+ios/artifacts/DerivedData/
+ios/artifacts/archives/
+ios/**/xcuserdata/
+artifacts/ios/*.zip
+*.p12
+*.mobileprovision
 .build/

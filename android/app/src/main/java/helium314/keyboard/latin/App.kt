@@ -2,6 +2,15 @@
 package helium314.keyboard.latin
 
 import android.app.Application
+import com.wingai.keyboard.settings.SettingsRepository
+import com.wingai.keyboard.settings.WingAiKeyboardAppearance
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import helium314.keyboard.keyboard.emoji.SupportedEmojis
 import helium314.keyboard.latin.define.DebugFlags
 import helium314.keyboard.latin.settings.Defaults
@@ -11,6 +20,8 @@ import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.SubtypeSettings
 
 class App : Application() {
+    private val appearanceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onCreate() {
         super.onCreate()
         DebugFlags.init(this)
@@ -24,6 +35,15 @@ class App : Application() {
         Defaults.initDynamicDefaults(this)
         LayoutUtilsCustom.removeMissingLayouts(this) // only after version upgrade
         SupportedEmojis.load(this)
+
+        // Reconcile presets selected before full-keyboard theming was added, and backup restores.
+        appearanceScope.launch {
+            SettingsRepository(this@App).settingsFlow
+                .map { it.appearance }
+                .distinctUntilChanged()
+                .catch { Log.w("WingAI", "Unable to refresh keyboard appearance", it) }
+                .collect { WingAiKeyboardAppearance.synchronize(this@App, it) }
+        }
 
         val packageInfo = packageManager.getPackageInfo(packageName, 0)
         @Suppress("DEPRECATION")

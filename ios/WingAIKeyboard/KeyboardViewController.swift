@@ -1,71 +1,76 @@
-#if canImport(UIKit)
 import UIKit
 import SwiftUI
 
+@MainActor
 public final class KeyboardViewController: UIInputViewController {
-    private let viewModel = WingAiKeyboardViewModel()
-    private var hostingController: UIHostingController<WingAiKeyboardRootView>?
+    private let state = WingAiKeyboardViewModel()
+    private let session = WingReplySession()
+    private var settings: WingAiSettings!
+    private var hostingController: UIHostingController<AnyView>?
+    private var keyboardHeight: NSLayoutConstraint?
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-
-        let rootView = WingAiKeyboardRootView(
-            viewModel: viewModel,
-            onInsertText: { [weak self] text in
-                self?.textDocumentProxy.insertText(text)
-            },
-            onDeleteBackward: { [weak self] in
-                self?.textDocumentProxy.deleteBackward()
-            },
-            onNextKeyboard: { [weak self] in
-                self?.advanceToNextInputMode()
-            },
-            onReadClipboardImage: {
-                guard let image = UIPasteboard.general.image else { return nil }
-                return image.jpegData(compressionQuality: 0.85)
-            },
-            onReadClipboardText: {
-                UIPasteboard.general.string
-            },
-            onCropImageData: { rawData, normalizedRect in
-                Self.cropImageData(rawData, normalizedRect: normalizedRect)
-            }
-        )
-
-        let host = UIHostingController(rootView: rootView)
+        settings = WingAiSettings()
+        refreshAccess()
+        let root = WingAiTheme(settings: settings) {
+            WingAiKeyboardRootView(
+                state: state, session: session, settings: settings,
+                onInsert: { [weak self] text in self?.textDocumentProxy.insertText(text) },
+                onDelete: { [weak self] in self?.textDocumentProxy.deleteBackward() },
+                onGlobeEvent: { [weak self] sender, event in self?.handleInputModeList(from: sender, with: event) },
+                onDismiss: { [weak self] in self?.dismissKeyboard() },
+                onPaste: { [weak self] in
+                    // Never read the clipboard on appearance, in the background or without permission.
+                    guard let self, self.hasFullAccess else { return nil }
+                    return UIPasteboard.general.string
+                },
+                onGenerate: { [weak self] in
+                    guard let self else { return }
+                    self.refreshAccess()
+                    self.session.generate(settings: self.settings, networkAllowed: self.hasFullAccess)
+                }
+            )
+        }
+        let host = UIHostingController(rootView: AnyView(root))
         host.view.translatesAutoresizingMaskIntoConstraints = false
         host.view.backgroundColor = .clear
-
-        addChild(host)
-        view.addSubview(host.view)
+        addChild(host); view.addSubview(host.view)
         NSLayoutConstraint.activate([
             host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             host.view.topAnchor.constraint(equalTo: view.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            host.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         host.didMove(toParent: self)
-        self.hostingController = host
+        hostingController = host
+        let height = view.heightAnchor.constraint(equalToConstant: 330)
+        height.priority = .defaultHigh
+        height.isActive = true
+        keyboardHeight = height
     }
 
-    public static func cropImageData(_ data: Data, normalizedRect: CGRect) -> Data? {
-        guard let image = UIImage(data: data), let cgImage = image.cgImage else {
-            return nil
-        }
-        let width = CGFloat(cgImage.width)
-        let height = CGFloat(cgImage.height)
-        let cropZone = CGRect(
-            x: max(0, normalizedRect.minX * width),
-            y: max(0, normalizedRect.minY * height),
-            width: min(width, normalizedRect.width * width),
-            height: min(height, normalizedRect.height * height)
-        ).integral
-
-        guard let croppedCg = cgImage.cropping(to: cropZone) else {
-            return data
-        }
-        return UIImage(cgImage: croppedCg, scale: image.scale, orientation: image.imageOrientation)
-            .jpegData(compressionQuality: 0.82)
+    public override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        settings.reload()
+        refreshAccess()
+    }
+    public override func viewWillDisappear(_ animated: Bool) {
+        // Conversation/screenshot content is intentionally not retained between extension presentations.
+        session.clear()
+        super.viewWillDisappear(animated)
+    }
+    public override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput)
+        refreshAccess()
+    }
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Keep all modes the same height; landscape is shorter and AI/themes scroll internally.
+        keyboardHeight?.constant = view.bounds.width > 600 ? 270 : 330
+    }
+    private func refreshAccess() {
+        state.hasFullAccess = hasFullAccess
+        state.needsGlobe = needsInputModeSwitchKey
     }
 }
-#endif

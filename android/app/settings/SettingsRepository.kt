@@ -11,6 +11,8 @@ import helium314.keyboard.latin.BuildConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 private val Context.dataStore by preferencesDataStore(name = "wingai_settings")
@@ -25,7 +27,8 @@ data class WingAiSettings(
     val longPressAction: ShortcutAction = ShortcutAction.PASTE_CONTEXT,
     val inspectBeforeUpload: Boolean = false,
     val bubbleX: Int = 24,
-    val bubbleY: Int = 360
+    val bubbleY: Int = 360,
+    val appearance: WingAiAppearance = WingAiAppearance.KEYBOARD
 )
 
 class SettingsRepository(private val context: Context) {
@@ -40,6 +43,7 @@ class SettingsRepository(private val context: Context) {
         val INSPECT_BEFORE_UPLOAD = booleanPreferencesKey("inspect_before_upload")
         val BUBBLE_X = intPreferencesKey("bubble_x")
         val BUBBLE_Y = intPreferencesKey("bubble_y")
+        val APPEARANCE = stringPreferencesKey("appearance")
     }
 
     val settingsFlow: Flow<WingAiSettings> = context.dataStore.data.map { prefs ->
@@ -66,7 +70,8 @@ class SettingsRepository(private val context: Context) {
                 ?: ShortcutAction.PASTE_CONTEXT,
             inspectBeforeUpload = prefs[Keys.INSPECT_BEFORE_UPLOAD] ?: false,
             bubbleX = prefs[Keys.BUBBLE_X] ?: 24,
-            bubbleY = prefs[Keys.BUBBLE_Y] ?: 360
+            bubbleY = prefs[Keys.BUBBLE_Y] ?: 360,
+            appearance = WingAiAppearance.fromId(prefs[Keys.APPEARANCE])
         )
     }
 
@@ -88,5 +93,12 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun updateInspectBeforeUpload(inspect: Boolean) {
         context.dataStore.edit { it[Keys.INSPECT_BEFORE_UPLOAD] = inspect }
+    }
+
+    suspend fun updateAppearance(appearance: WingAiAppearance) {
+        context.dataStore.edit { it[Keys.APPEARANCE] = appearance.id }
+        withContext(Dispatchers.Main.immediate) {
+            WingAiKeyboardAppearance.synchronize(context, appearance)
+        }
     }
 }

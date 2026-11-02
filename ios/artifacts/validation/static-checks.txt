@@ -1,0 +1,52 @@
+PASS unique valid Xcode object IDs
+PASS no dangling Xcode references
+PASS source exists: Config/Common.xcconfig
+PASS source exists: Shared/WingReplySession.swift
+PASS source exists: Config/App-Info.plist
+PASS source exists: Assets.xcassets
+PASS source exists: Config/PrivacyInfo.xcprivacy
+PASS source exists: Shared/WingAiSettings.swift
+PASS source exists: Config/Keyboard-Info.plist
+PASS source exists: WingAIKeyboard/KeyboardViewController.swift
+PASS source exists: WingAIKeyboard/WingAiKeyboardView.swift
+PASS source exists: Shared/WingModels.swift
+PASS source exists: WingAIApp/AppMain.swift
+PASS source exists: Tests/WingAITests.swift
+PASS source exists: Shared/WingAppearance.swift
+PASS source exists: Shared/WingAiApiClient.swift
+PASS source exists: Shared/WingAiDesignSystem.swift
+PASS source exists: WingAIApp/WingAIApp.swift
+PASS app, keyboard and test targets present
+PASS only host target includes app entry point
+PASS keyboard has its real UIKit entry point
+PASS no host-only APIs included in keyboard
+PASS all Swift source assigned once per target
+PASS all shipping Swift source assigned to a target
+PASS keyboard embedded in host PlugIns folder
+PASS keyboard extension registration
+PASS Full Access opt-in requested
+PASS no default App Group entitlement requirement
+PASS valid plist: App-Info.plist
+PASS valid plist: Keyboard-Info.plist
+PASS valid plist: PrivacyInfo.xcprivacy
+PASS valid plist: AppGroups.entitlements.example
+PASS shared scheme references real targets
+PASS focused tests included in shared scheme
+PASS 1024px opaque app icon
+PASS request checks consent and Full Access
+PASS Worker string limits use UTF-16
+PASS no old screen capture or private keyboard detection
+PASS Swift grammar: Package.swift
+PASS Swift grammar: Shared/WingAiApiClient.swift
+PASS Swift grammar: Shared/WingAiDesignSystem.swift
+PASS Swift grammar: Shared/WingAiSettings.swift
+PASS Swift grammar: Shared/WingAppearance.swift
+PASS Swift grammar: Shared/WingModels.swift
+PASS Swift grammar: Shared/WingReplySession.swift
+PASS Swift grammar: Tests/WingAITests.swift
+PASS Swift grammar: WingAIApp/AppMain.swift
+PASS Swift grammar: WingAIApp/WingAIApp.swift
+PASS Swift grammar: WingAIKeyboard/KeyboardViewController.swift
+PASS Swift grammar: WingAIKeyboard/WingAiKeyboardView.swift
+
+50 static checks passed. Apple SDK compilation, signing, XCTest execution and device validation are NOT performed by this script.

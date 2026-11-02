@@ -1,5 +1,4 @@
 import Foundation
-import CoreGraphics
 
 public enum WingTone: String, CaseIterable, Codable, Sendable {
     case casual = "casual"
@@ -80,26 +79,40 @@ public struct ReplyResponse: Codable, Equatable, Sendable {
     }
 }
 
-/// Shared App Group storage (`group.com.wingai.keyboard`) used between:
-/// 1. WingAI Host App (`WingAIApp`)
-/// 2. WingAI Keyboard Extension (`WingAIKeyboard`)
-/// 3. WingAI Back-Tap Shortcut (`CaptureChatForWingAIIntent`)
-/// 4. WingAI 1-Frame ReplayKit Broadcast (`WingAIBroadcast`)
+/// Preferences only: conversation text, screenshots and replies are never saved here.
+/// App Groups are optional; without a correctly entitled group each target works locally.
 public final class AppGroupStore: @unchecked Sendable {
     public static let shared = AppGroupStore()
-    public static let appGroupId = "group.com.wingai.keyboard"
     public static let defaultBackendUrl = "https://wingai-backend.zardamhussain.workers.dev"
-
     private let defaults: UserDefaults
-    private let userIdKey = "wingai_device_user_id"
-    private let backendUrlKey = "wingai_backend_url"
-    private let snapshotTimestampKey = "wingai_pending_snapshot_ts"
+    private let lock = NSLock()
+    public let usesSharedGroup: Bool
 
-    public init(suiteName: String = AppGroupStore.appGroupId) {
-        self.defaults = UserDefaults(suiteName: suiteName) ?? .standard
+    public init(defaults: UserDefaults? = nil) {
+        if let defaults {
+            self.defaults = defaults
+            self.usesSharedGroup = false
+            return
+        }
+        let group = (Bundle.main.object(forInfoDictionaryKey: "WingAIAppGroup") as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        #if os(iOS) || os(macOS)
+        if !group.isEmpty,
+           FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil,
+           let shared = UserDefaults(suiteName: group) {
+            self.defaults = shared
+            self.usesSharedGroup = true
+            return
+        }
+        #endif
+        self.defaults = .standard
+        self.usesSharedGroup = false
     }
 
     public func getOrCreateUserId() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        let userIdKey = "wingai_device_user_id"
         if let existing = defaults.string(forKey: userIdKey), !existing.isEmpty {
             return existing
         }
@@ -111,57 +124,22 @@ public final class AppGroupStore: @unchecked Sendable {
 
     public var backendUrl: String {
         get {
-            let stored = defaults.string(forKey: backendUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let stored = defaults.string(forKey: "wingai_backend_url")?.trimmingCharacters(in: .whitespacesAndNewlines)
             return (stored?.isEmpty == false) ? stored! : Self.defaultBackendUrl
         }
         set {
-            defaults.set(newValue, forKey: backendUrlKey)
+            defaults.set(newValue, forKey: "wingai_backend_url")
         }
     }
 
-    private var pendingSnapshotFileURL: URL? {
-        if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupId) {
-            try? FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
-            if FileManager.default.isWritableFile(atPath: container.path) {
-                return container.appendingPathComponent("pending_snapshot.jpg")
-            }
-        }
-        return FileManager.default.temporaryDirectory.appendingPathComponent("pending_snapshot.jpg")
+    public var appearance: WingAppearance {
+        get { WingAppearance.from(defaults.string(forKey: "wingai_appearance")) }
+        set { defaults.set(newValue.rawValue, forKey: "wingai_appearance") }
     }
 
-    /// Saves a single captured screenshot frame into the shared App Group container so the keyboard
-    /// can immediately display the Select & Search crop overlay and then delete it.
-    public func savePendingSnapshotData(_ jpegData: Data) {
-        guard let url = pendingSnapshotFileURL else { return }
-        try? jpegData.write(to: url, options: .atomic)
-        defaults.set(Date().timeIntervalSince1970, forKey: snapshotTimestampKey)
-    }
-
-    /// Reads and consumes the pending snapshot if captured within the last 5 minutes.
-    public func consumePendingSnapshotData() -> Data? {
-        guard let url = pendingSnapshotFileURL,
-              FileManager.default.fileExists(atPath: url.path) else {
-            return nil
-        }
-        let ts = defaults.double(forKey: snapshotTimestampKey)
-        let age = Date().timeIntervalSince1970 - ts
-        let data = try? Data(contentsOf: url)
-        clearPendingSnapshot()
-        if age > 300 {
-            return nil
-        }
-        return data
-    }
-
-    public func hasPendingSnapshot() -> Bool {
-        guard let url = pendingSnapshotFileURL else { return false }
-        return FileManager.default.fileExists(atPath: url.path)
-    }
-
-    public func clearPendingSnapshot() {
-        if let url = pendingSnapshotFileURL {
-            try? FileManager.default.removeItem(at: url)
-        }
-        defaults.removeObject(forKey: snapshotTimestampKey)
+    /// Consent is tied to the exact endpoint; changing it requires a fresh acknowledgement.
+    public var consentedBackend: String? {
+        get { defaults.string(forKey: "wingai_consented_backend") }
+        set { defaults.set(newValue, forKey: "wingai_consented_backend") }
     }
 }

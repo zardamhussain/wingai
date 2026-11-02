@@ -1,0 +1,41 @@
+{
+  "apk": "wingai-app/artifacts/apk/WingAI-modern-ui-debug-arm64.apk",
+  "version_name": "3.8-wingai-ui2",
+  "version_code": 3802,
+  "bytes": 34875256,
+  "size_MiB": 33.26,
+  "sha256": "e293165c41c9ae33571fe985e232f7790e701d841736ce78327b63aa0d43a604",
+  "native_libraries": [
+    {
+      "path": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "load_segment_alignment_bytes": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+      "load_segment_alignment_bytes": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/arm64-v8a/libjni_latinime.so",
+      "load_segment_alignment_bytes": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  ],
+  "theme_tests": {
+    "tests": 9,
+    "failures": 0,
+    "errors": 0
+  },
+  "device_or_emulator_run": false,
+  "backend_tested": false
+}

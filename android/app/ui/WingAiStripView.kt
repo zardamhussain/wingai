@@ -104,7 +104,7 @@ class WingAiToolbarActionsView @JvmOverloads constructor(
                     ) {
                         if (!isPassword) {
                             CompactPillButton(
-                                text = "Select",
+                                text = "Analyze chat",
                                 backgroundColor = WingAiTokens.Surface1,
                                 borderColor = WingAiTokens.BorderSubtle,
                                 textColor = WingAiTokens.TextPrimary,
@@ -117,7 +117,7 @@ class WingAiToolbarActionsView @JvmOverloads constructor(
                             text = when {
                                 isPassword -> "Locked"
                                 state.isPanelOpen -> "Keys"
-                                else -> "AI"
+                                else -> "Replies"
                             },
                             backgroundColor = if (state.isPanelOpen) {
                                 WingAiTokens.AccentPrimary
