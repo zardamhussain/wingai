@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    SPDX-FileCopyrightText: Material Design Authors / Google LLC
-    SPDX-License-Identifier: Apache-2.0
--->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="960"
-    android:viewportHeight="960">
-  <path
-      android:fillColor="#FFF"
-      android:pathData="M240,720v-80h480v80L240,720ZM480,224 L720,464 664,520 480,336 296,520 240,464 480,224Z"/>
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- SwiftKey Caps Lock Filled Shift Arrow + Bottom Bar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2.8 L3.4,12.2 C3.1,12.5 3.0,13.0 3.2,13.4 C3.4,13.8 3.8,14.0 4.2,14.0 H8.5 V17.5 C8.5,18.1 9.0,18.5 9.5,18.5 H14.5 C15.0,18.5 15.5,18.1 15.5,17.5 V14.0 H19.8 C20.2,14.0 20.6,13.8 20.8,13.4 C21.0,13.0 20.9,12.5 20.6,12.2 L12,2.8 Z M8.5,20.2 C8.5,19.7 8.9,19.3 9.4,19.3 H14.6 C15.1,19.3 15.5,19.7 15.5,20.2 C15.5,20.7 15.1,21.1 14.6,21.1 H9.4 C8.9,21.1 8.5,20.7 8.5,20.2 Z" />
 </vector>

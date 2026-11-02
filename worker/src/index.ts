@@ -21,6 +21,15 @@ export interface R2BucketBinding {
   ): Promise<unknown>;
 }
 
+export interface DurableObjectStubBinding {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
+export interface DurableObjectNamespaceBinding {
+  idFromName(name: string): unknown;
+  get(id: unknown, options?: { locationHint?: string }): DurableObjectStubBinding;
+}
+
 export interface Env {
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
@@ -29,6 +38,7 @@ export interface Env {
   FREE_DAILY_LIMIT?: string;
   DB?: D1Binding;
   STORAGE?: R2BucketBinding;
+  GEMINI_PROXY?: DurableObjectNamespaceBinding;
 }
 
 export type UserTier = "free" | "paid";
@@ -476,10 +486,8 @@ async function callGemini(
     };
   }
 
-  const model = env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const primaryModel = env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
+  const candidateModels = [primaryModel, primaryModel];
 
   const requestBody = {
     systemInstruction: {
@@ -496,47 +504,99 @@ async function callGemini(
       responseSchema: REPLY_RESPONSE_SCHEMA,
       temperature: 0.4,
     },
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+    ],
   };
 
-  const fetchFn = customFetcher ?? fetch;
-  let upstreamResponse: Response;
-  try {
-    upstreamResponse = await fetchFn(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+  const fetchFn =
+    customFetcher ??
+    (async (targetUrl: string, init?: RequestInit): Promise<Response> => {
+      if (env.GEMINI_PROXY) {
+        try {
+          const doId = env.GEMINI_PROXY.idFromName("gemini-us-wnam-v1");
+          const stub = env.GEMINI_PROXY.get(doId, { locationHint: "wnam" });
+          const proxyReq = new Request("https://gemini-proxy.internal/forward", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Target-Url": targetUrl,
+            },
+            body: init?.body,
+          });
+          return await stub.fetch(proxyReq);
+        } catch {
+          // Fall back to direct fetch if DO invocation fails
+        }
+      }
+      return fetch(targetUrl, init);
     });
-  } catch {
-    return {
-      status: 503,
-      body: { detail: "AI service failed to process the request." },
-    };
-  }
+  let upstreamResponse: Response | null = null;
+  let upstreamJson: any = null;
+  let rawText: string | undefined;
+  const errorTrace: string[] = [];
 
-  if (!upstreamResponse.ok) {
-    return {
-      status: 503,
-      body: { detail: "AI service failed to process the request." },
-    };
-  }
+  for (let i = 0; i < candidateModels.length; i++) {
+    const model = candidateModels[i];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+      model
+    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  let upstreamJson: any;
-  try {
-    upstreamJson = await upstreamResponse.json();
-  } catch {
-    return {
-      status: 503,
-      body: { detail: "AI service returned an invalid response format." },
-    };
-  }
+    try {
+      upstreamResponse = await fetchFn(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+    } catch (err: any) {
+      errorTrace.push(`net_err(${model}): ${err?.message || "fetch failed"}`);
+      continue;
+    }
 
-  const rawText: string | undefined =
-    upstreamJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!upstreamResponse.ok) {
+      let errText = "";
+      try {
+        errText = await upstreamResponse.text();
+      } catch {
+        errText = "";
+      }
+      errorTrace.push(
+        `http_${upstreamResponse.status}(${model})${
+          errText ? `: ${errText.replace(/\s+/g, " ").slice(0, 140)}` : ""
+        }`
+      );
+      continue;
+    }
+
+    try {
+      upstreamJson = await upstreamResponse.json();
+    } catch {
+      errorTrace.push(`invalid_json(${model})`);
+      continue;
+    }
+
+    rawText = upstreamJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (rawText && rawText.trim()) {
+      break;
+    }
+
+    const blockReason =
+      upstreamJson?.promptFeedback?.blockReason ||
+      upstreamJson?.candidates?.[0]?.finishReason ||
+      "empty_candidates";
+    errorTrace.push(`blocked(${model}:${blockReason})`);
+  }
 
   if (!rawText || !rawText.trim()) {
     return {
       status: 503,
-      body: { detail: "AI service returned an empty response." },
+      body: {
+        detail:
+          errorTrace.join(" | ") || "AI service failed to process the request.",
+      },
     };
   }
 
@@ -928,5 +988,30 @@ app.post("/v1/rewrite", enforceRequestGuards, async (c) => {
   );
   return c.json(result.body, result.status as 200 | 400 | 503);
 });
+
+export class GeminiRegionalProxy {
+  constructor(_state: unknown, _env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const targetUrl = request.headers.get("X-Target-Url");
+    if (!targetUrl) {
+      return new Response(JSON.stringify({ error: "Missing X-Target-Url" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const bodyText = await request.text();
+    const upstream = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bodyText,
+    });
+    const respText = await upstream.text();
+    return new Response(respText, {
+      status: upstream.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
 
 export default app;

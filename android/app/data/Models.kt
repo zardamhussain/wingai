@@ -1,11 +1,11 @@
 package com.wingai.keyboard.data
 
 enum class ReplyTone(val wireName: String, val label: String) {
+    FLIRTY("flirty", "Flirty"),
     CASUAL("casual", "Casual"),
     FRIENDLY("friendly", "Friendly"),
-    PROFESSIONAL("professional", "Professional"),
     FUNNY("funny", "Funny"),
-    FLIRTY("flirty", "Flirty"),
+    PROFESSIONAL("professional", "Professional"),
     SHORT("short", "Short"),
     DETAILED("detailed", "Detailed");
 
@@ -41,6 +41,12 @@ enum class ActiveInputTarget {
     EDIT_REPLY
 }
 
+enum class AiHubMode(val label: String) {
+    REPLY("Reply"),
+    REWRITE("Tone"),
+    POLISH("Editor")
+}
+
 data class UserProfile(
     val userId: String = "",
     val tier: String = "free",
@@ -66,13 +72,18 @@ data class AiReplyResult(
 
 data class AiSessionState(
     val isPanelOpen: Boolean = false,
+    val isFeaturesRowOpen: Boolean = true,
     val isKeyboardVisible: Boolean = false,
+    val hubMode: AiHubMode = AiHubMode.REPLY,
     val activeInputTarget: ActiveInputTarget = ActiveInputTarget.HOST_APP,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val pendingImageBase64: String? = null,
     val selectedImageBase64: String? = null,
     val pastedContext: String = "",
+    val hostDraftText: String = "",
+    val undoPreviousText: String? = null,
+    val lastReplacedText: String? = null,
     val selectedTone: ReplyTone? = null,
     val customInstruction: String = "",
     val editingReplyText: String = "",

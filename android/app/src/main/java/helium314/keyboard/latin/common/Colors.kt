@@ -68,13 +68,8 @@ interface Colors {
                 if (hasKeyBorders) attr.getDrawable(R.styleable.KeyboardView_spacebarBackground)
                 else attr.getDrawable(R.styleable.KeyboardView_spacebarNoBorderBackground)
             }
-            ACTION_KEY_BACKGROUND -> {
-                if (themeStyle == STYLE_HOLO && hasKeyBorders) // no borders has a very small pressed drawable otherwise
-                    attr.getDrawable(R.styleable.KeyboardView_functionalKeyBackground)
-                else
-                    attr.getDrawable(R.styleable.KeyboardView_keyBackground)
-            }
-            else -> null // keyBackground
+            ACTION_KEY_BACKGROUND -> attr.getDrawable(R.styleable.KeyboardView_functionalKeyBackground)
+            else -> attr.getDrawable(R.styleable.KeyboardView_keyBackground)
         }?.mutate() ?: attr.getDrawable(R.styleable.KeyboardView_keyBackground)?.mutate()!! // keyBackground always exists
 
         setColor(drawable, color)
@@ -87,15 +82,15 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
     private val isNight = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
-    private val accent = getAccent(context)
-    private val gesture = getGesture(context)
-    private val background = getBackground(context)
-    private val keyBackground = getKeyBackground(context)
-    private val functionalKey = getFunctionalKey(context)
-    private val spaceBar = getKeyBackground(context)
-    private val keyText = getKeyText(context)
-    private val keyHintText = getKeyHintText(context)
-    private val spaceBarText = getSpaceBarText(context)
+    private val accent = if (isNight) Color.parseColor("#9DC3FF") else Color.parseColor("#3961ED")
+    private val gesture = accent
+    private val background = if (isNight) Color.parseColor("#141414") else Color.parseColor("#F1F1F1")
+    private val keyBackground = if (isNight) Color.parseColor("#292929") else Color.parseColor("#FFFFFF")
+    private val functionalKey = if (isNight) Color.parseColor("#1E1E1E") else Color.parseColor("#E3E3E3")
+    private val spaceBar = keyBackground
+    private val keyText = if (isNight) Color.parseColor("#FFFFFF") else Color.parseColor("#292929")
+    private val keyHintText = if (isNight) Color.parseColor("#939393") else Color.parseColor("#777777")
+    private val spaceBarText = if (isNight) Color.parseColor("#939393") else Color.parseColor("#777777")
 
     private fun getAccent(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent1_100)
         else ContextCompat.getColor(context, android.R.color.system_accent1_200)
@@ -228,11 +223,9 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
             functionalKeyStateList =
                 if (!isNight) pressedStateList(doubleAdjustedFunctionalKey, functionalKey)
-                else pressedStateList(functionalKey, doubleAdjustedKeyBackground)
+                else pressedStateList(adjustedKeyBackground, functionalKey)
 
-            actionKeyStateList =
-                if (!isNight) pressedStateList(gesture, accent)
-                else pressedStateList(doubleAdjustedAccent, accent)
+            actionKeyStateList = functionalKeyStateList
 
             spaceBarStateList =
                 if (themeStyle == STYLE_HOLO) pressedStateList(spaceBar, spaceBar)
@@ -263,25 +256,21 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
         }
         keyTextFilter = colorFilter(keyText)
 
-        actionKeyIconColorFilter = when {
-            themeStyle == STYLE_HOLO -> keyTextFilter
-            // the white icon may not have enough contrast, and can't be adjusted by the user
-            isBrightColor(accent) -> colorFilter(Color.DKGRAY)
-            else -> null
-        }
+        actionKeyIconColorFilter = keyTextFilter
     }
 
     override fun get(color: ColorType): Int = when (color) {
-        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, ACTION_KEY_BACKGROUND,
+        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED,
         CLIPBOARD_PIN, SHIFT_KEY_ICON -> accent
+        ACTION_KEY_BACKGROUND -> functionalKey
         AUTOFILL_BACKGROUND_CHIP, GESTURE_PREVIEW, POPUP_KEYS_BACKGROUND, MORE_SUGGESTIONS_BACKGROUND, KEY_PREVIEW_BACKGROUND -> adjustedBackground
         TOOL_BAR_EXPAND_KEY_BACKGROUND -> if (!isNight) accent else doubleAdjustedBackground
         GESTURE_TRAIL -> gesture
         KEY_TEXT, SUGGESTION_AUTO_CORRECT, REMOVE_SUGGESTION_ICON, EMOJI_KEY_TEXT, KEY_PREVIEW_TEXT, POPUP_KEY_TEXT,
-            KEY_ICON, POPUP_KEY_ICON, ONE_HANDED_MODE_BUTTON, EMOJI_CATEGORY, TOOL_BAR_KEY, FUNCTIONAL_KEY_TEXT -> keyText
+            KEY_ICON, POPUP_KEY_ICON, ONE_HANDED_MODE_BUTTON, EMOJI_CATEGORY, TOOL_BAR_KEY, FUNCTIONAL_KEY_TEXT, ACTION_KEY_ICON, TOOL_BAR_EXPAND_KEY -> keyText
         KEY_HINT_TEXT -> keyHintText
         SPACE_BAR_TEXT -> spaceBarText
-        FUNCTIONAL_KEY_BACKGROUND -> if (!isNight) functionalKey else doubleAdjustedKeyBackground
+        FUNCTIONAL_KEY_BACKGROUND -> functionalKey
         SPACE_BAR_BACKGROUND -> spaceBar
         MORE_SUGGESTIONS_WORD_BACKGROUND, MAIN_BACKGROUND -> background
         KEY_BACKGROUND -> keyBackground
@@ -290,7 +279,6 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
         CLIPBOARD_SUGGESTION_BACKGROUND -> doubleAdjustedBackground
         NAVIGATION_BAR -> navBar
         MORE_SUGGESTIONS_HINT, SUGGESTED_WORD, SUGGESTION_TYPED_WORD, SUGGESTION_VALID_WORD -> adjustedKeyText
-        ACTION_KEY_ICON, TOOL_BAR_EXPAND_KEY -> Color.WHITE
     }
 
     override fun setColor(drawable: Drawable, color: ColorType) {
@@ -446,8 +434,7 @@ class DefaultColors (
             keyStateList = if (themeStyle == STYLE_HOLO) pressedStateList(keyBackground, keyBackground)
                 else pressedStateList(brightenOrDarken(keyBackground, true), keyBackground)
             functionalKeyStateList = pressedStateList(brightenOrDarken(functionalKey, true), functionalKey)
-            actionKeyStateList = if (themeStyle == STYLE_HOLO) functionalKeyStateList
-                else pressedStateList(brightenOrDarken(accent, true), accent)
+            actionKeyStateList = functionalKeyStateList
             spaceBarStateList = if (themeStyle == STYLE_HOLO) pressedStateList(spaceBar, spaceBar)
                 else pressedStateList(brightenOrDarken(spaceBar, true), spaceBar)
         } else {
@@ -460,23 +447,19 @@ class DefaultColors (
             spaceBarStateList = pressedStateList(brightenOrDarken(spaceBar, true), spaceBar)
         }
         keyTextFilter = colorFilter(keyText)
-        actionKeyIconColorFilter = when {
-            themeStyle == STYLE_HOLO -> keyTextFilter
-            // the white icon may not have enough contrast, and can't be adjusted by the user
-            isBrightColor(accent) -> colorFilter(Color.DKGRAY)
-            else -> null
-        }
+        actionKeyIconColorFilter = keyTextFilter
     }
 
     override fun get(color: ColorType): Int = when (color) {
-        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, ACTION_KEY_BACKGROUND,
+        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED,
             CLIPBOARD_PIN, SHIFT_KEY_ICON -> accent
+        ACTION_KEY_BACKGROUND -> functionalKey
         AUTOFILL_BACKGROUND_CHIP -> if (themeStyle == STYLE_MATERIAL && !hasKeyBorders) background else adjustedBackground
         GESTURE_PREVIEW, POPUP_KEYS_BACKGROUND, MORE_SUGGESTIONS_BACKGROUND, KEY_PREVIEW_BACKGROUND -> adjustedBackground
         TOOL_BAR_EXPAND_KEY_BACKGROUND, CLIPBOARD_SUGGESTION_BACKGROUND -> doubleAdjustedBackground
         GESTURE_TRAIL -> gesture
         KEY_TEXT, REMOVE_SUGGESTION_ICON, FUNCTIONAL_KEY_TEXT, KEY_ICON, EMOJI_KEY_TEXT,
-            POPUP_KEY_TEXT, POPUP_KEY_ICON, KEY_PREVIEW_TEXT -> keyText
+            POPUP_KEY_TEXT, POPUP_KEY_ICON, KEY_PREVIEW_TEXT, ACTION_KEY_ICON -> keyText
         KEY_HINT_TEXT -> keyHintText
         SPACE_BAR_TEXT -> spaceBarText
         FUNCTIONAL_KEY_BACKGROUND -> functionalKey
@@ -488,7 +471,6 @@ class DefaultColors (
         NAVIGATION_BAR -> navBar
         SUGGESTION_AUTO_CORRECT, EMOJI_CATEGORY, TOOL_BAR_KEY, TOOL_BAR_EXPAND_KEY, ONE_HANDED_MODE_BUTTON -> suggestionText
         MORE_SUGGESTIONS_HINT, SUGGESTED_WORD, SUGGESTION_TYPED_WORD, SUGGESTION_VALID_WORD -> adjustedSuggestionText
-        ACTION_KEY_ICON -> Color.WHITE
     }
 
     override fun setColor(drawable: Drawable, color: ColorType) {

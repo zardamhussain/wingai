@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rotate xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fromDegrees="90"
-    android:drawable="@drawable/ic_arrow_left_rounded">
-</rotate>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- SwiftKey Hollow Shift Arrow (Unshifted / Shifted) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3.1 L3.2,12.8 C2.9,13.1 2.9,13.6 3.1,14.0 C3.3,14.4 3.7,14.6 4.1,14.6 H8.5 V19.8 C8.5,20.5 9.0,21.0 9.7,21.0 H14.3 C15.0,21.0 15.5,20.5 15.5,19.8 V14.6 H19.9 C20.3,14.6 20.7,14.4 20.9,14.0 C21.1,13.6 21.1,13.1 20.8,12.8 L12,3.1 Z M12,5.6 L18.0,12.2 H14.5 C13.9,12.2 13.5,12.6 13.5,13.2 V19.0 H10.5 V13.2 C10.5,12.6 10.1,12.2 9.5,12.2 H6.0 L12,5.6 Z" />
+</vector>

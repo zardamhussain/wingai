@@ -359,14 +359,8 @@ final class SuggestionStripLayoutHelper {
         mMoreSuggestionsAvailable = (wordCountToShow > countInStrip);
         @SuppressWarnings("unused")
         int x = 0;
+        // SwiftKey candidate bar omits vertical divider lines between word slots
         for (int positionInStrip = 0; positionInStrip < countInStrip; positionInStrip++) {
-            if (positionInStrip != 0) {
-                final View divider = mDividerViews.get(positionInStrip);
-                // Add divider if this isn't the left most suggestion in suggestions strip.
-                addDivider(stripView, divider);
-                x += divider.getMeasuredWidth();
-            }
-
             final int width = getSuggestionWidth(positionInStrip, stripWidth);
             final TextView wordView = layoutWord(context, positionInStrip, width);
             stripView.addView(wordView);
@@ -499,11 +493,6 @@ final class SuggestionStripLayoutHelper {
             final PunctuationSuggestions punctuationSuggestions, final ViewGroup stripView) {
         final int countInStrip = Math.min(punctuationSuggestions.size(), PUNCTUATIONS_IN_STRIP);
         for (int positionInStrip = 0; positionInStrip < countInStrip; positionInStrip++) {
-            if (positionInStrip != 0) {
-                // Add divider if this isn't the left most suggestion in suggestions strip.
-                addDivider(stripView, mDividerViews.get(positionInStrip));
-            }
-
             final TextView wordView = mWordViews.get(positionInStrip);
             final String punctuation = punctuationSuggestions.getLabel(positionInStrip);
             // {@link TextView#getTag()} is used to get the index in suggestedWords at

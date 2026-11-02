@@ -203,6 +203,17 @@ public class SuggestedWords {
     }
 
     @NonNull
+    public static SuggestedWords getStarterInstance() {
+        final ArrayList<SuggestedWordInfo> starters = new ArrayList<>(3);
+        starters.add(new SuggestedWordInfo("I", "", SuggestedWordInfo.MAX_SCORE, SuggestedWordInfo.KIND_PREDICTION, Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE));
+        starters.add(new SuggestedWordInfo("The", "", SuggestedWordInfo.MAX_SCORE - 1, SuggestedWordInfo.KIND_PREDICTION, Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE));
+        starters.add(new SuggestedWordInfo("Hi", "", SuggestedWordInfo.MAX_SCORE - 2, SuggestedWordInfo.KIND_PREDICTION, Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE));
+        return new SuggestedWords(
+                starters, null, null, false,
+                false, false, INPUT_STYLE_BEGINNING_OF_SENTENCE_PREDICTION, NOT_A_SEQUENCE_NUMBER);
+    }
+
+    @NonNull
     public static SuggestedWords getEmptyBatchInstance() {
         return SuggestedWords.EMPTY_BATCH;
     }

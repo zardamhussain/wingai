@@ -4,6 +4,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
@@ -28,7 +29,9 @@ object InputConnectionBridge {
     @Volatile
     private var collapsedForSelection: Boolean = false
 
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val mainHandler: Handler? by lazy {
+        runCatching { Handler(Looper.getMainLooper()) }.getOrNull()
+    }
 
     private val _sessionState = MutableStateFlow(AiSessionState())
     val sessionState: StateFlow<AiSessionState> = _sessionState.asStateFlow()
@@ -65,7 +68,7 @@ object InputConnectionBridge {
      */
     fun hideKeyboardForSelection() {
         collapsedForSelection = true
-        mainHandler.post {
+        mainHandler?.post {
             runCatching {
                 val ime = imeServiceRef?.get()
                 if (ime is LatinIME) {
@@ -85,7 +88,7 @@ object InputConnectionBridge {
         collapsedForSelection = false
         val delays = longArrayOf(0L, 100L, 260L)
         for (delayMs in delays) {
-            mainHandler.postDelayed({
+            mainHandler?.postDelayed({
                 collapsedForSelection = false
                 val ime = imeServiceRef?.get() ?: return@postDelayed
                 runCatching {
@@ -104,12 +107,35 @@ object InputConnectionBridge {
 
     fun hasActiveInputConnection(): Boolean = connectionProvider?.invoke() != null
 
+    /**
+     * SwiftKey-style host text reader (`g60/f.p`):
+     * 1. Reads highlighted selection first via `getSelectedText(0)`.
+     * 2. Falls back to `getExtractedText()` or `getTextBeforeCursor()` for the full draft.
+     */
+    fun readHostFieldText(preferSelection: Boolean = true): String {
+        if (isPasswordFieldActive()) return ""
+        val ic = connectionProvider?.invoke() ?: return ""
+        if (preferSelection) {
+            val selected = runCatching { ic.getSelectedText(0)?.toString()?.trim() }.getOrNull()
+            if (!selected.isNullOrBlank()) {
+                return selected
+            }
+        }
+        val extracted = runCatching {
+            ic.getExtractedText(ExtractedTextRequest(), 0)?.text?.toString()?.trim()
+        }.getOrNull()
+        if (!extracted.isNullOrBlank()) {
+            return extracted
+        }
+        val before = runCatching { ic.getTextBeforeCursor(4000, 0)?.toString() }.getOrNull().orEmpty()
+        val after = runCatching { ic.getTextAfterCursor(4000, 0)?.toString() }.getOrNull().orEmpty()
+        return (before + after).trim()
+    }
+
     fun consumeHostFieldTextAsPrompt(): String {
         if (isPasswordFieldActive()) return ""
         val ic = connectionProvider?.invoke() ?: return ""
-        val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)?.text?.toString()?.trim()
-            ?: ic.getTextBeforeCursor(250, 0)?.toString()?.trim()
-            ?: ""
+        val extracted = readHostFieldText(preferSelection = true)
         if (extracted.isNotBlank()) {
             ic.deleteSurroundingText(extracted.length + 10, 10)
             _sessionState.update { it.copy(customInstruction = extracted) }
@@ -117,26 +143,160 @@ object InputConnectionBridge {
         return extracted
     }
 
-    fun insertReply(text: String): Result<Unit> {
+    /**
+     * SwiftKey-style in-place replacement (`cc0/n.K`):
+     * Replaces either the highlighted selection or the entire host text field atomically,
+     * storing the previous text for 1-tap Undo in the keyboard strip.
+     */
+    fun replaceHostFieldText(newText: String, closePanel: Boolean = false): Result<Unit> {
         val ic = connectionProvider?.invoke()
-            ?: return Result.failure(IllegalStateException("Select a text field before inserting a reply."))
+            ?: return Result.failure(IllegalStateException("Select a text field before replacing text."))
         if (isPasswordFieldActive()) {
             return Result.failure(IllegalStateException("WingAI is disabled in password fields."))
         }
-        // Commit the reply text without sending or submitting the form (AT-08, AT-09).
-        val committed = ic.commitText(text, 1)
-        return if (committed) {
+
+        val previousFullText = readHostFieldText(preferSelection = false)
+        val selected = runCatching { ic.getSelectedText(0)?.toString() }.getOrNull()
+
+        val success = runCatching {
+            ic.beginBatchEdit()
+            try {
+                ic.finishComposingText()
+                if (!selected.isNullOrEmpty()) {
+                    ic.commitText(newText, 1)
+                } else {
+                    val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)?.text
+                    if (extracted != null && extracted.isNotEmpty()) {
+                        ic.setSelection(0, extracted.length)
+                        ic.commitText(newText, 1)
+                    } else {
+                        val beforeLen = ic.getTextBeforeCursor(4000, 0)?.length ?: 0
+                        val afterLen = ic.getTextAfterCursor(4000, 0)?.length ?: 0
+                        if (beforeLen > 0 || afterLen > 0) {
+                            ic.deleteSurroundingText(beforeLen, afterLen)
+                        }
+                        ic.commitText(newText, 1)
+                    }
+                }
+            } finally {
+                ic.endBatchEdit()
+            }
+        }.isSuccess
+
+        return if (success) {
             _sessionState.update {
                 it.copy(
-                    preservedDraft = text,
+                    preservedDraft = newText,
+                    hostDraftText = newText,
+                    lastReplacedText = newText,
+                    undoPreviousText = previousFullText.takeIf { prev -> prev.isNotBlank() && prev != newText },
                     errorMessage = null,
-                    isPanelOpen = false,
+                    isPanelOpen = if (closePanel) false else it.isPanelOpen,
                     activeInputTarget = ActiveInputTarget.HOST_APP
                 )
             }
             Result.success(Unit)
         } else {
-            Result.failure(IllegalStateException("Select a text field before inserting a reply."))
+            Result.failure(IllegalStateException("Select a text field before replacing text."))
+        }
+    }
+
+    /**
+     * Inserts or replaces the reply in the host field and saves undo state.
+     */
+    fun insertReply(text: String): Result<Unit> {
+        val currentState = _sessionState.value
+        val existingDraft = readHostFieldText(preferSelection = false)
+        val shouldReplaceInPlace = currentState.hubMode != AiHubMode.REPLY && existingDraft.isNotBlank()
+
+        return if (shouldReplaceInPlace) {
+            replaceHostFieldText(newText = text, closePanel = false)
+        } else {
+            val ic = connectionProvider?.invoke()
+                ?: return Result.failure(IllegalStateException("Select a text field before inserting a reply."))
+            if (isPasswordFieldActive()) {
+                return Result.failure(IllegalStateException("WingAI is disabled in password fields."))
+            }
+            val committed = if (existingDraft.isNotBlank()) {
+                replaceHostFieldText(newText = text, closePanel = true).isSuccess
+            } else {
+                ic.commitText(text, 1)
+            }
+            if (committed) {
+                _sessionState.update {
+                    it.copy(
+                        preservedDraft = text,
+                        lastReplacedText = text,
+                        undoPreviousText = existingDraft,
+                        errorMessage = null,
+                        isPanelOpen = false,
+                        activeInputTarget = ActiveInputTarget.HOST_APP
+                    )
+                }
+                Result.success(Unit)
+            } else {
+                Result.failure(IllegalStateException("Select a text field before inserting a reply."))
+            }
+        }
+    }
+
+    /**
+     * SwiftKey-style 1-tap Undo chip (`quick_delete_ribbon_view` / `cd0/g`):
+     * Restores the text field to its state prior to the last AI insert/replace.
+     */
+    fun undoLastReplacement(): Boolean {
+        val prev = _sessionState.value.undoPreviousText ?: return false
+        val ic = connectionProvider?.invoke() ?: return false
+        if (isPasswordFieldActive()) return false
+
+        val restored = runCatching {
+            ic.beginBatchEdit()
+            try {
+                ic.finishComposingText()
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)?.text
+                if (extracted != null) {
+                    ic.setSelection(0, extracted.length)
+                } else {
+                    val beforeLen = ic.getTextBeforeCursor(4000, 0)?.length ?: 0
+                    val afterLen = ic.getTextAfterCursor(4000, 0)?.length ?: 0
+                    ic.deleteSurroundingText(beforeLen, afterLen)
+                }
+                ic.commitText(prev, 1)
+            } finally {
+                ic.endBatchEdit()
+            }
+        }.isSuccess
+
+        if (restored) {
+            _sessionState.update {
+                it.copy(
+                    undoPreviousText = null,
+                    lastReplacedText = null,
+                    hostDraftText = prev
+                )
+            }
+        }
+        return restored
+    }
+
+    /**
+     * Sends a single backspace operation to the host app (used by the SwiftKey-style bottom bar delete key).
+     */
+    fun sendBackspaceToHost() {
+        if (isPasswordFieldActive()) return
+        val ic = connectionProvider?.invoke() ?: return
+        runCatching {
+            val selected = ic.getSelectedText(0)
+            if (!selected.isNullOrEmpty()) {
+                ic.commitText("", 1)
+            } else {
+                ic.deleteSurroundingText(1, 0)
+            }
+        }.onFailure {
+            runCatching {
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            }
         }
     }
 
@@ -148,10 +308,26 @@ object InputConnectionBridge {
         _sessionState.update { current ->
             AiSessionState(
                 isPanelOpen = current.isPanelOpen,
+                isFeaturesRowOpen = current.isFeaturesRowOpen,
                 isKeyboardVisible = current.isKeyboardVisible,
+                hubMode = current.hubMode,
                 preservedDraft = current.preservedDraft,
                 userProfile = current.userProfile
             )
+        }
+    }
+
+    /**
+     * Dispatches a HeliBoard `KeyCode` to `LatinIME.mKeyboardActionListener` so SwiftKey
+     * Level 1 feature buttons (Clipboard, Emoji, Voice, Settings, Undo) can trigger native
+     * keyboard panels directly.
+     */
+    fun triggerKeyboardKeyCode(code: Int) {
+        mainHandler?.post {
+            runCatching {
+                val ime = imeServiceRef?.get() as? LatinIME ?: return@post
+                ime.mKeyboardActionListener.onCodeInput(code, -1, -1, false)
+            }
         }
     }
 }

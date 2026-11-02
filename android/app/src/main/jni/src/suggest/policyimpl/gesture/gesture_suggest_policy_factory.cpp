@@ -15,7 +15,14 @@
  */
 
 #include "gesture_suggest_policy_factory.h"
+#include "gesture_suggest_policy.h"
 
 namespace latinime {
-    const SuggestPolicy *(*GestureSuggestPolicyFactory::sGestureSuggestFactoryMethod)() = 0;
+    const GestureTraversal GestureTraversal::sInstance;
+    const GestureScoring GestureScoring::sInstance;
+    const GestureWeighting GestureWeighting::sInstance;
+    const GestureSuggestPolicy GestureSuggestPolicy::sInstance;
+
+    const SuggestPolicy *(*GestureSuggestPolicyFactory::sGestureSuggestFactoryMethod)() =
+            &GestureSuggestPolicy::getInstance;
 } // namespace latinime

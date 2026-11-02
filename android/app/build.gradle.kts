@@ -14,7 +14,7 @@ android {
         applicationId = "com.wingai.keyboard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3801
+        versionCode = 3811
         versionName = "3.8-wingai"
         buildConfigField("String", "DEFAULT_BACKEND_URL", "\"https://wingai-backend.zardamhussain.workers.dev\"")
         ndk {

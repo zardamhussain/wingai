@@ -133,8 +133,8 @@ class WingAiApiClient(
         val base = resolvePrimaryBaseUrl()
         val conn = (URL("$base$path").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 10_000
-            readTimeout = 25_000
+            connectTimeout = 15_000
+            readTimeout = 45_000
             doOutput = true
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("Accept", "application/json")

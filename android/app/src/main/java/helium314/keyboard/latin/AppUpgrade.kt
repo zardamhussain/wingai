@@ -598,6 +598,26 @@ object AppUpgrade {
                     !prefs.getBoolean(Settings.PREF_BIGRAM_PREDICTIONS, Defaults.PREF_BIGRAM_PREDICTIONS))
             }
         }
+        if (oldVersion <= 3810) {
+            // Apply SwiftKey Fluent Adaptive defaults on upgrade
+            prefs.edit {
+                putString(Settings.PREF_THEME_STYLE, KeyboardTheme.STYLE_ROUNDED)
+                putString(Settings.PREF_ICON_STYLE, KeyboardTheme.STYLE_ROUNDED)
+                putString(Settings.PREF_THEME_COLORS, KeyboardTheme.THEME_LIGHT)
+                putString(Settings.PREF_THEME_COLORS_NIGHT, KeyboardTheme.THEME_DARK)
+                putBoolean(Settings.PREF_THEME_KEY_BORDERS, true)
+                putBoolean(Settings.PREF_GESTURE_INPUT, true)
+                putBoolean(Settings.PREF_GESTURE_PREVIEW_TRAIL, true)
+                putBoolean(Settings.PREF_GESTURE_FLOATING_PREVIEW_TEXT, true)
+                putBoolean(Settings.PREF_POPUP_ON, true)
+                putBoolean(Settings.PREF_SHOW_HINTS, false)
+                putBoolean(Settings.PREF_NARROW_KEY_GAPS, true)
+                putBoolean(Settings.PREF_SHOW_EMOJI_KEY, true)
+                putFloat(Settings.PREF_FONT_SCALE, 1.03f)
+                putBoolean(Settings.PREF_DELETE_SWIPE, true)
+                putString(Settings.PREF_SPACE_HORIZONTAL_SWIPE, "move_cursor")
+            }
+        }
         upgradeToolbarPrefs(prefs)
         LayoutUtilsCustom.onLayoutFileChanged() // just to be sure
         prefs.edit { putInt(Settings.PREF_VERSION_CODE, BuildConfig.VERSION_CODE) }

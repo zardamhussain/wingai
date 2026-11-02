@@ -15,22 +15,24 @@
         android:layout_height="match_parent"
         android:hapticFeedbackEnabled="false"
         android:soundEffectsEnabled="false">
-        <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
-             We just need to ignore the system's audio and haptic feedback settings. -->
+        <!-- SwiftKey Level 2 Left: 40dp wrapper containing 28dp circular Chevron button (`rb0/y0` + `rb0/a1`) -->
+        <com.wingai.keyboard.ui.WingAiChevronToggleView
+            android:id="@+id/wingai_chevron_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent" />
+        <!-- Legacy HeliBoard expand key hidden so Level 2 stays a clean 3-slot candidate bar -->
         <ImageButton
             android:id="@+id/suggestions_strip_toolbar_key"
-            android:layout_width="@dimen/config_suggestions_strip_edge_key_width"
-            android:layout_height="@dimen/config_suggestions_strip_edge_key_width"
-            android:layout_gravity="center_vertical"
-            android:layout_weight="0"
-            android:layout_marginStart="1dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
             android:background="@drawable/toolbar_expand_key_background"
             style="?attr/suggestionWordStyle"
             android:contentDescription="@string/more_keys_strip_description" />
         <HorizontalScrollView
             android:id="@+id/toolbar_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:scrollbarThumbHorizontal="@color/toolbar_scrollbar"
             android:visibility="gone">
             <LinearLayout
@@ -41,10 +43,7 @@
                 style="?attr/suggestionWordStyle">
             </LinearLayout>
         </HorizontalScrollView>
-        <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
-             We just need to ignore the system's audio and haptic feedback settings. -->
-        <!-- todo: sth is fishy with that maxwidth
-               check what is going on in the layout helper? -->
+        <!-- SwiftKey Level 2 Center: 3 equal-width suggestion slots (`SequentialCandidateBarLayout`) -->
         <LinearLayout
             android:id="@+id/suggestions_strip"
             android:orientation="horizontal"
@@ -58,8 +57,9 @@
         <LinearLayout
             android:id="@+id/pinned_keys"
             android:orientation="horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
             android:minWidth="0dp"
             style="?attr/suggestionWordStyle">
         </LinearLayout>

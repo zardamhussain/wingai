@@ -11,6 +11,17 @@ FREE_DAILY_LIMIT = "5"
 [observability]
 enabled = true
 
+[placement]
+mode = "smart"
+
+[[durable_objects.bindings]]
+name = "GEMINI_PROXY"
+class_name = "GeminiRegionalProxy"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GeminiRegionalProxy"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "wingai"

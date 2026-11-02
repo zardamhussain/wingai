@@ -217,19 +217,17 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     }
 
     fun setToolbarVisibility(toolbarVisible: Boolean) {
-        // avoid showing toolbar keys when locked
-        val locked = isDeviceLocked(context)
-        pinnedKeys.isVisible = !locked && !toolbarVisible
-        suggestionsStrip.isVisible = locked || !toolbarVisible
-        toolbarContainer.isVisible = !locked && toolbarVisible
+        // SwiftKey 3-level layout: Level 1 (WingAiFeaturesRowView) hosts all toolbar features,
+        // while Level 2 (SuggestionStripView) always displays the 3 candidate slots.
+        pinnedKeys.isVisible = false
+        suggestionsStrip.isVisible = true
+        toolbarContainer.isVisible = false
 
         if (DEBUG_SUGGESTIONS) {
             for (view in debugInfoViews) {
                 view.visibility = suggestionsStrip.visibility
             }
         }
-
-        toolbarExpandKey.scaleX = (if (toolbarVisible && !locked) -1f else 1f) * direction
     }
 
     fun setSuggestions(suggestions: SuggestedWords, isRtlLanguage: Boolean) {
@@ -505,21 +503,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
 
     private fun updateKeys() {
         updateVoiceKey()
-        val settingsValues = Settings.getValues()
-
-        val toolbarIsExpandable = settingsValues.mToolbarMode == ToolbarMode.EXPANDABLE
-        if (settingsValues.mIncognitoModeEnabled) {
-            toolbarExpandKey.setImageDrawable(incognitoIcon)
-            toolbarExpandKey.isVisible = true
-        } else {
-            toolbarExpandKey.setImageDrawable(toolbarArrowIcon)
-            toolbarExpandKey.isVisible = toolbarIsExpandable
-        }
-
-        // hide pinned keys if device is locked, and avoid expanding toolbar
-        val hideToolbarKeys = isDeviceLocked(context)
-        toolbarExpandKey.setOnClickListener(if (hideToolbarKeys || !toolbarIsExpandable) null else this)
-        pinnedKeys.visibility = if (hideToolbarKeys) GONE else suggestionsStrip.visibility
+        // SwiftKey 3-level layout: WingAiChevronToggleView handles expanding/collapsing Level 1.
+        toolbarExpandKey.isVisible = false
+        pinnedKeys.visibility = GONE
         isExternalSuggestionVisible = false
     }
 

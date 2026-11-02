@@ -19,9 +19,7 @@ import helium314.keyboard.latin.utils.defaultToolbarPref
 object Defaults {
     fun initDynamicDefaults(context: Context) {
         PREF_GESTURE_DYNAMIC_PREVIEW_FOLLOW_SYSTEM = getTransitionAnimationScale(context) != 0.0f
-        val dm = context.resources.displayMetrics
-        val px600 = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 600f, dm)
-        PREF_POPUP_ON = dm.widthPixels >= px600 || dm.heightPixels >= px600
+        PREF_POPUP_ON = true
     }
 
     // must correspond to a file name
@@ -73,7 +71,7 @@ object Defaults {
     const val PREF_BLOCK_POTENTIALLY_OFFENSIVE = true
     const val PREF_SHOW_LANGUAGE_SWITCH_KEY = false
     const val PREF_LANGUAGE_SWITCH_KEY = "internal"
-    const val PREF_SHOW_EMOJI_KEY = false
+    const val PREF_SHOW_EMOJI_KEY = true
     const val PREF_VARIABLE_TOOLBAR_DIRECTION = true
     const val PREF_ADDITIONAL_SUBTYPES = "de${Separators.SET}${ExtraValue.KEYBOARD_LAYOUT_SET}=MAIN:qwerty${Separators.SETS}" +
             "fr${Separators.SET}${ExtraValue.KEYBOARD_LAYOUT_SET}=MAIN:qwertz${Separators.SETS}" +
@@ -90,7 +88,7 @@ object Defaults {
     val PREF_BOTTOM_PADDING_SCALE = arrayOf(DEFAULT_SIZE_SCALE, 0f)
     @JvmField
     val PREF_SIDE_PADDING_SCALE = Array(4) { 0f }
-    const val PREF_FONT_SCALE = 1.05f
+    const val PREF_FONT_SCALE = 1.03f
     const val PREF_EMOJI_FONT_SCALE = 1.04f
     const val PREF_EMOJI_KEY_FIT = true
     const val PREF_EMOJI_SKIN_TONE = ""
@@ -132,7 +130,7 @@ object Defaults {
     const val PREF_LOCALIZED_NUMBER_ROW = true
     const val PREF_SHOW_NUMBER_ROW_HINTS = false
     const val PREF_CUSTOM_CURRENCY_KEY = ""
-    const val PREF_SHOW_HINTS = true
+    const val PREF_SHOW_HINTS = false
     const val PREF_POPUP_KEYS_ORDER = POPUP_KEYS_ORDER_DEFAULT
     const val PREF_POPUP_KEYS_LABELS_ORDER = POPUP_KEYS_LABEL_DEFAULT
     const val PREF_SHOW_POPUP_HINTS = false
@@ -146,7 +144,7 @@ object Defaults {
     const val PREF_ADD_TO_PERSONAL_DICTIONARY = false
     @JvmField
     val PREF_NAVBAR_COLOR = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-    const val PREF_NARROW_KEY_GAPS = false
+    const val PREF_NARROW_KEY_GAPS = true
     const val PREF_ENABLED_SUBTYPES = ""
     const val PREF_SELECTED_SUBTYPE = ""
     const val PREF_URL_DETECTION = false

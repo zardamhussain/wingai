@@ -305,7 +305,7 @@ public class SettingsValues {
         mRemoveRedundantPopups = prefs.getBoolean(Settings.PREF_REMOVE_REDUNDANT_POPUPS, Defaults.PREF_REMOVE_REDUNDANT_POPUPS);
         mSpaceBarText = prefs.getString(Settings.PREF_SPACE_BAR_TEXT, Defaults.PREF_SPACE_BAR_TEXT);
         final float savedFontScale = prefs.getFloat(Settings.PREF_FONT_SCALE, Defaults.PREF_FONT_SCALE);
-        mFontSizeMultiplier = (savedFontScale == 1.0f || savedFontScale == 1.16f) ? Defaults.PREF_FONT_SCALE : savedFontScale;
+        mFontSizeMultiplier = (savedFontScale == 1.0f || savedFontScale == 1.05f || savedFontScale == 1.12f || savedFontScale == 1.16f) ? Defaults.PREF_FONT_SCALE : savedFontScale;
         mFontSizeMultiplierEmoji = prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE);
         mEmojiKeyFit = prefs.getBoolean(Settings.PREF_EMOJI_KEY_FIT, Defaults.PREF_EMOJI_KEY_FIT);
     }

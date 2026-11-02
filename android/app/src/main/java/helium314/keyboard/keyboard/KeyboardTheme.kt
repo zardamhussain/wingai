@@ -117,13 +117,8 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         fun getKeyboardTheme(context: Context): KeyboardTheme {
             val prefs = context.prefs()
             val style = prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE)
-            val borders = if (prefs.contains(Settings.PREF_THEME_KEY_BORDERS)) {
-                prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS)
-            } else {
-                true
-            }
-            val effectiveStyle = if (!prefs.contains(Settings.PREF_THEME_STYLE)) STYLE_ROUNDED else style
-            val matchingId = when (effectiveStyle) {
+        val borders = prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS)
+            val matchingId = when (style) {
                 STYLE_HOLO -> THEME_ID_HOLO_BASE
                 STYLE_ROUNDED -> if (borders) THEME_ID_ROUNDED_BASE_BORDER else THEME_ID_ROUNDED_BASE
                 else -> if (borders) THEME_ID_LXX_BASE_BORDER else THEME_ID_LXX_BASE
@@ -132,7 +127,7 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         }
 
         fun getThemeActionAndEmojiKeyLabelFlags(themeId: Int): Int {
-            return if (themeId == THEME_ID_LXX_BASE || themeId == THEME_ID_ROUNDED_BASE) Key.LABEL_FLAGS_KEEP_BACKGROUND_ASPECT_RATIO else 0
+            return 0
         }
 
         @JvmStatic
@@ -173,10 +168,10 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
                     themeStyle,
                     hasBorders,
                     ContextCompat.getColor(context, R.color.gesture_trail_color_lxx_dark),
-                    "#16181D".toColorInt(),
-                    "#242730".toColorInt(),
-                    "#1C1F27".toColorInt(),
-                    "#242730".toColorInt(),
+                    "#141414".toColorInt(),
+                    "#292929".toColorInt(),
+                    "#1E1E1E".toColorInt(),
+                    "#292929".toColorInt(),
                     ContextCompat.getColor(context, R.color.key_text_color_lxx_dark),
                     ContextCompat.getColor(context, R.color.key_hint_letter_color_lxx_dark),
                     keyboardBackground = backgroundImage

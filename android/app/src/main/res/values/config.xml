@@ -18,7 +18,7 @@
     <!-- This config_default_keyboard_height value should match with keyboard-heights.xml -->
     <dimen name="config_default_keyboard_height">205.6dp</dimen>
     <fraction name="config_max_keyboard_height">46%p</fraction>
-    <fraction name="config_min_keyboard_height">-61.8%p</fraction>
+    <fraction name="config_min_keyboard_height">-50.0%p</fraction>
 
     <dimen name="config_popup_keys_keyboard_key_height">52.8dp</dimen>
     <!-- Amount of allowance for selecting keys in a mini popup keyboard by sliding finger. -->
@@ -26,23 +26,23 @@
     <dimen name="config_popup_keys_keyboard_slide_allowance">63.36dp</dimen>
     <dimen name="config_popup_keys_keyboard_key_horizontal_padding">8dp</dimen>
 
-    <fraction name="config_keyboard_top_padding_holo">2.335%p</fraction>
-    <fraction name="config_keyboard_bottom_padding_holo">4.669%p</fraction>
-    <fraction name="config_key_vertical_gap_holo">6.127%p</fraction>
-    <fraction name="config_key_horizontal_gap_holo">1.739%p</fraction>
-    <fraction name="config_key_vertical_gap_holo_narrow">3.527%p</fraction>
-    <fraction name="config_key_horizontal_gap_holo_narrow">1.089%p</fraction>
+    <fraction name="config_keyboard_top_padding_holo">1.0%p</fraction>
+    <fraction name="config_keyboard_bottom_padding_holo">1.5%p</fraction>
+    <fraction name="config_key_vertical_gap_holo">3.5%p</fraction>
+    <fraction name="config_key_horizontal_gap_holo">1.15%p</fraction>
+    <fraction name="config_key_vertical_gap_holo_narrow">2.8%p</fraction>
+    <fraction name="config_key_horizontal_gap_holo_narrow">0.95%p</fraction>
     <!-- config_popup_keys_keyboard_key_height x -0.5 -->
     <dimen name="config_popup_keys_keyboard_vertical_correction_holo">-26.4dp</dimen>
     <dimen name="config_key_preview_offset_holo">40.0dp</dimen>
     <dimen name="config_key_preview_offset_lxx">0dp</dimen>
     <fraction name="config_key_preview_text_ratio">82%</fraction>
-    <fraction name="config_key_letter_ratio_holo">55%</fraction>
-    <fraction name="config_key_letter_ratio_lxx">55%</fraction>
+    <fraction name="config_key_letter_ratio_holo">56%</fraction>
+    <fraction name="config_key_letter_ratio_lxx">56%</fraction>
     <fraction name="config_key_large_letter_ratio_holo">65%</fraction>
     <fraction name="config_key_large_letter_ratio_lxx">90%</fraction>
-    <fraction name="config_key_label_ratio_holo">34%</fraction>
-    <fraction name="config_key_label_ratio_lxx">34%</fraction>
+    <fraction name="config_key_label_ratio_holo">36%</fraction>
+    <fraction name="config_key_label_ratio_lxx">36%</fraction>
     <fraction name="config_key_hint_letter_ratio_holo">25%</fraction>
     <fraction name="config_key_hint_letter_ratio_lxx">25%</fraction>
     <fraction name="config_key_hint_label_ratio_holo">44%</fraction>

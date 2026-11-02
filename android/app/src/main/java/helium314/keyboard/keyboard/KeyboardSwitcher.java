@@ -17,6 +17,7 @@ import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
@@ -67,7 +68,7 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     private LinearLayout mClipboardStripView;
     private HorizontalScrollView mClipboardStripScrollView;
     private SuggestionStripView mSuggestionStripView;
-    private FrameLayout mStripContainer;
+    private ViewGroup mStripContainer;
     private ClipboardHistoryView mClipboardHistoryView;
     private TextView mFakeToastView;
     private LatinIME mLatinIME;
@@ -677,7 +678,7 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         return mKeyboardView;
     }
 
-    public FrameLayout getStripContainer() { return mStripContainer; }
+    public ViewGroup getStripContainer() { return mStripContainer; }
 
     public void deallocateMemory() {
         if (mKeyboardView != null) {
