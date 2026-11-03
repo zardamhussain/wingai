@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.auth.AuthValidationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:21.302Z" hostname="SITL-IT7978.local" time="0.002">
+  <properties/>
+  <testcase name="newPasswordMaximum" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.001"/>
+  <testcase name="newPasswordMinimum" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <testcase name="passphrasesAndUnicodeNotStripped" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <testcase name="nameRequired" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <testcase name="malformedEmailRejected" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.001"/>
+  <testcase name="nameLengthBounded" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <testcase name="emailLengthBounded" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <testcase name="validEmailTrimsOuterSpaces" classname="com.wingai.keyboard.auth.AuthValidationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

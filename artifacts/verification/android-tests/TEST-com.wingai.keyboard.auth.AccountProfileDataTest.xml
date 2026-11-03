@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.auth.AccountProfileDataTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:08.257Z" hostname="SITL-IT7978.local" time="5.004">
+  <properties/>
+  <testcase name="updateBackfillsDeviceIdWithoutReplacingCreatedAt" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="4.875"/>
+  <testcase name="createsProfileWithExactExistingWingAiDeviceId" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="0.04"/>
+  <testcase name="firebaseUidOrHardwareIdCannotBeMistakenForWingAiId" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="0.03"/>
+  <testcase name="noEntitlementOrCredentialFieldsAreIncluded" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="0.018"/>
+  <testcase name="firestoreRulesErrorIsClearlyNotAGoogleLoginError" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="0.024"/>
+  <testcase name="offlineDatabaseDoesNotClaimIdWasSaved" classname="com.wingai.keyboard.auth.AccountProfileDataTest" time="0.016"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "436758670860",
+    "project_id": "keyboard-f9ed8",
+    "storage_bucket": "keyboard-f9ed8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:436758670860:android:1a1082bd1343a9e510c829",
+        "android_client_info": {
+          "package_name": "com.wingai.keyboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvDjoyliCdOhD6KROkJ4pQBIbyMMuZ2_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

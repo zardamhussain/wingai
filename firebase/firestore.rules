@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Login metadata only. Cloudflare D1 continues to own paid tiers and quotas.
+    // Never add client-writable tier, role, quota or verification fields.
+    // wingaiDeviceId is client-reported metadata only, NOT ownership or plan authorization.
+    match /users/{uid} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function validProfile() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['displayName', 'email', 'createdAt', 'updatedAt'])
+          && data.keys().hasOnly(['displayName', 'email', 'createdAt', 'updatedAt', 'wingaiDeviceId'])
+          // Optional for backwards-compatible older clients; current builds always send it.
+          && (!('wingaiDeviceId' in data) || (data.wingaiDeviceId is string
+            && data.wingaiDeviceId.matches('^wing_[0-9a-f]{10}$')))
+          && data.displayName is string && data.displayName.size() <= 60
+          && data.email is string && data.email.size() <= 254
+          && data.email == request.auth.token.email
+          && data.createdAt is timestamp && data.updatedAt is timestamp
+          && data.updatedAt == request.time;
+      }
+      allow get: if isOwner();
+      allow list: if false;
+      allow create: if isOwner() && validProfile()
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner() && validProfile()
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner();
+    }
+    // Merge this users match into reviewed production rules if other collections exist.
+    // This file deliberately grants no access to any other collection/subcollection.
+  }
+}

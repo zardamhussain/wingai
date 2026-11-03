@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.auth.FirebaseStorageTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:21.308Z" hostname="SITL-IT7978.local" time="1.335">
+  <properties/>
+  <testcase name="firebaseInitializationIsRefusedBeforeUnlock[28]" classname="com.wingai.keyboard.auth.FirebaseStorageTest" time="1.122"/>
+  <testcase name="firebaseInitializationIsRefusedBeforeUnlock" classname="com.wingai.keyboard.auth.FirebaseStorageTest" time="0.063"/>
+  <testcase name="firebaseUsesCredentialStorageWithoutChangingTheKeyboardContext[28]" classname="com.wingai.keyboard.auth.FirebaseStorageTest" time="0.08"/>
+  <testcase name="firebaseUsesCredentialStorageWithoutChangingTheKeyboardContext" classname="com.wingai.keyboard.auth.FirebaseStorageTest" time="0.07"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

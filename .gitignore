@@ -21,3 +21,9 @@ worker/.dev.vars
 # iOS / SwiftPM build artifacts
 ios/.build/
 .build/
+
+# Local Firebase rule tests and emulator logs (never service-account credentials)
+firebase/node_modules/
+firebase/*-debug.log
+firebase/.firebase/
+**/*service-account*.json
