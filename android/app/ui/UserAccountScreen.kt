@@ -48,6 +48,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wingai.keyboard.ai.WingAiApiClient
+import com.wingai.keyboard.auth.WingAiAccountEntry
 import com.wingai.keyboard.data.InputConnectionBridge
 import com.wingai.keyboard.data.UserProfile
 import com.wingai.keyboard.settings.SettingsRepository
@@ -133,6 +134,7 @@ fun UserAccountScreen(onClickBack: () -> Unit) {
                     state = state,
                     modifier = Modifier.padding(innerPadding),
                     onRefresh = { vm.refreshProfile() },
+                    accountEntry = { WingAiAccountEntry() },
                     onCopyUserId = { userId ->
                         if (userId.isNotBlank()) {
                             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -151,7 +153,8 @@ fun UserAccountContent(
     state: UserAccountUiState,
     modifier: Modifier = Modifier,
     onRefresh: () -> Unit,
-    onCopyUserId: (String) -> Unit
+    onCopyUserId: (String) -> Unit,
+    accountEntry: @Composable () -> Unit = {}
 ) {
     var playgroundText by remember { mutableStateOf("") }
     val profile = state.profile
@@ -163,6 +166,9 @@ fun UserAccountContent(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Optional login is additive; all existing device plan UI and behavior stays intact.
+        accountEntry()
+
         // 1. Plan & Daily Quota Hero Card
         WingAiSurfaceCard(
             modifier = Modifier.fillMaxWidth(),

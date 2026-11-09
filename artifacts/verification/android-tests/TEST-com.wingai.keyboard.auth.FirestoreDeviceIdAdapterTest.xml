@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:22.647Z" hostname="localhost" time="1.746">
+  <properties/>
+  <testcase name="existingProfileUsesUpdateAndPreservesCreationTime" classname="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" time="1.518"/>
+  <testcase name="rulesFailureDoesNotReturnAFalseSavedDeviceId" classname="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" time="0.055"/>
+  <testcase name="signedOutClientNeverRequestsADeviceIdOrWritesFirestore" classname="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" time="0.031"/>
+  <testcase name="createsUsersUidDocumentWithTheExistingIdOffMainThread" classname="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" time="0.033"/>
+  <testcase name="defaultDeviceIdLoaderReusesTheKeyboardDataStoreIdentity" classname="com.wingai.keyboard.auth.FirestoreDeviceIdAdapterTest" time="0.109"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

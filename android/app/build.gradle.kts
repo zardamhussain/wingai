@@ -5,6 +5,7 @@ plugins {
     kotlin("android")
     kotlin("plugin.serialization") version "2.2.21"
     kotlin("plugin.compose") version "2.2.21"
+    id("com.google.gms.google-services") version "4.5.0"
 }
 
 android {
@@ -14,7 +15,7 @@ android {
         applicationId = "com.wingai.keyboard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3811
+        versionCode = 3816
         versionName = "3.8-wingai"
         buildConfigField("String", "DEFAULT_BACKEND_URL", "\"https://wingai-backend.zardamhussain.workers.dev\"")
         ndk {
@@ -93,10 +94,20 @@ android {
         compose = true
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = File("src/main/jni/Android.mk")
+    // GNU Make cannot build under a path containing spaces. The optional local helper
+    // builds these same JNI sources through a temporary path alias, never substitutes a library.
+    val wingaiNativeLibs = providers.gradleProperty("wingaiNativeLibs").orNull
+    if (wingaiNativeLibs == null) {
+        externalNativeBuild {
+            ndkBuild {
+                path = File("src/main/jni/Android.mk")
+            }
         }
+    } else {
+        require(File(wingaiNativeLibs, "arm64-v8a/libjni_latinime.so").isFile) {
+            "Build the current JNI sources with tools/build-login-apk.sh first."
+        }
+        sourceSets.getByName("main").jniLibs.srcDir(wingaiNativeLibs)
     }
     ndkVersion = "27.1.12297006"
 
@@ -150,6 +161,19 @@ android {
 }
 
 dependencies {
+    // Optional account identity only: existing keyboard, Worker plans and quotas stay unchanged.
+    // BoM 35 requires Kotlin 2.4 metadata; keep the existing Kotlin 2.2 toolchain intact.
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    // Firebase Auth brings an old Fragment transitively; preserve ActivityResult/permission compatibility.
+    implementation("androidx.fragment:fragment:1.8.9")
+    // Explicit Google account chooser; Firebase still validates the returned ID token.
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
     // androidx
     implementation("androidx.core:core-ktx:1.16.0") // 1.17 requires SDK 36
     implementation("androidx.recyclerview:recyclerview:1.4.0")
@@ -179,4 +203,7 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -23,12 +23,26 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:allowBackup="true"
+            android:fullBackupContent="@xml/wingai_auth_backup_rules"
+            android:dataExtractionRules="@xml/wingai_auth_data_extraction_rules"
             android:usesCleartextTraffic="true"
             android:defaultToDeviceProtectedStorage="true"
             android:directBootAware="true"
             android:enableOnBackInvokedCallback="true"
             tools:remove="android:appComponentFactory"
             tools:targetApi="p">
+
+        <!-- The IME runs before unlock. Initialize account Firebase lazily in credential
+             storage, never via a provider in the direct-boot keyboard process. -->
+        <provider android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
+
+        <activity android:name="com.wingai.keyboard.auth.WingAiAuthActivity"
+            android:exported="false"
+            android:directBootAware="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/platformActivityTheme" />
 
         <activity
             android:name="com.wingai.keyboard.capture.ScreenCaptureActivity"
