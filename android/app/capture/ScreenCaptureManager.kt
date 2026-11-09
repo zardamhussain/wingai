@@ -162,13 +162,13 @@ object ScreenCaptureManager {
         }, 450L)
     }
 
-    fun cropAndEncodeBitmap(
+    fun cropBitmap(
         source: Bitmap,
         normLeft: Float,
         normTop: Float,
         normRight: Float,
         normBottom: Float
-    ): String {
+    ): Bitmap {
         val leftFrac = min(normLeft, normRight).coerceIn(0f, 0.95f)
         val rightFrac = max(normLeft, normRight).coerceIn(leftFrac + 0.05f, 1f)
         val topFrac = min(normTop, normBottom).coerceIn(0f, 0.95f)
@@ -179,7 +179,17 @@ object ScreenCaptureManager {
         val w = ((source.width * (rightFrac - leftFrac)).toInt()).coerceIn(1, source.width - x)
         val h = ((source.height * (bottomFrac - topFrac)).toInt()).coerceIn(1, source.height - y)
 
-        val cropped = Bitmap.createBitmap(source, x, y, w, h)
+        return Bitmap.createBitmap(source, x, y, w, h)
+    }
+
+    fun cropAndEncodeBitmap(
+        source: Bitmap,
+        normLeft: Float,
+        normTop: Float,
+        normRight: Float,
+        normBottom: Float
+    ): String {
+        val cropped = cropBitmap(source, normLeft, normTop, normRight, normBottom)
         // Downscale if largest dimension exceeds 1280px for fast, reliable upload and Gemini OCR
         val maxDim = max(cropped.width, cropped.height)
         val scaled = if (maxDim > 1280) {

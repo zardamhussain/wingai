@@ -68,6 +68,26 @@ export interface ReplyItem {
   text: string;
 }
 
+export interface StructuredChatMessage {
+  index: number;
+  sender: "them" | "me" | "system";
+  text: string;
+  alignment?: "left" | "right" | "center";
+}
+
+export interface StructuredChatContext {
+  source?: string;
+  language_hint?: string;
+  reply_language_directive?: string;
+  last_speaker?: string;
+  message_intent?: string;
+  user_style_hint?: string;
+  target_word_count_range?: string;
+  reply_slot_plans?: string[];
+  latest_incoming_message?: string;
+  messages: StructuredChatMessage[];
+}
+
 export interface ReplyResponse {
   status: "success" | "error";
   context_status: "sufficient" | "insufficient";
@@ -89,21 +109,11 @@ const ALLOWED_TONES = new Set<string>([
 const ALLOWED_ACTIONS = new Set<string>(["rewrite", "shorten", "expand", "tone"]);
 const DEFAULT_TONES = ["casual", "friendly", "professional"] as const;
 
-export const SYSTEM_PROMPT = `You are WingAI, an assistant that helps the user write replies to messages.
-
-Follow these rules:
-1. Identify the available conversation text from the image or text input.
-2. Identify the sender of each message when possible.
-3. Identify the latest message that needs a reply.
-4. Generate exactly three reply options.
-5. When no specific tone is requested, use these three tones in order: "casual", "friendly", "professional".
-6. When a specific tone is requested, generate three variations in that requested tone.
-7. When a custom instruction is provided, follow the instruction in all three replies.
-8. Do not invent facts about the user.
-9. Do not assume that the user agreed to a request unless the custom instruction says so.
-10. Match the language and script of the conversation (for example, if the chat is in Hinglish—Hindi written in Latin/English script—write the 3 replies in natural Hinglish).
-11. If the conversation is not clear or readable, set context_status to "insufficient" and provide neutral replies or ask for more context.
-12. Return valid JSON matching the required schema.`;
+export const SYSTEM_PROMPT = `You are WingAI, a fast chat reply generator.
+The client has ALREADY analyzed the conversation language, user style, message intent, and 3 reply slot plans.
+Do NOT re-analyze input language—strictly obey the provided Reply Language Directive, User Style, Target Word Count, and 3 Slot Plans.
+Do not invent facts.
+Return ONLY valid JSON with this exact shape: {"status":"success","context_status":"sufficient","message":null,"replies":[{"tone":"casual","text":"..."},{"tone":"friendly","text":"..."},{"tone":"professional","text":"..."}]}.`;
 
 const REPLY_RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -138,7 +148,7 @@ const REPLY_RESPONSE_SCHEMA = {
 // Isolate-scoped rate limiter (sliding 60-second window per client IP)
 const rateLimitBuckets = new Map<string, number[]>();
 
-// In-memory fallback store for unit tests when D1 is not bound
+// In-memory fallback store and fast cache for user profiles
 const memoryUsers = new Map<
   string,
   { user_id: string; tier: UserTier; daily_used: number; usage_date: string }
@@ -175,6 +185,10 @@ function toUserProfile(
 
 async function getOrInitUser(env: Env, userId: string): Promise<UserProfile> {
   const today = todayUtc();
+  const cached = memoryUsers.get(userId);
+  if (cached && cached.usage_date === today && env.DB) {
+    return toUserProfile(cached, env);
+  }
   if (env.DB) {
     const existing = await env.DB.prepare(
       "SELECT user_id, tier, daily_used, usage_date FROM users WHERE user_id = ?"
@@ -183,15 +197,14 @@ async function getOrInitUser(env: Env, userId: string): Promise<UserProfile> {
       .first<{ user_id: string; tier: string; daily_used: number; usage_date: string }>();
 
     if (!existing) {
+      const fresh = { user_id: userId, tier: "free" as UserTier, daily_used: 0, usage_date: today };
+      memoryUsers.set(userId, fresh);
       await env.DB.prepare(
         "INSERT INTO users (user_id, tier, daily_used, usage_date) VALUES (?, 'free', 0, ?)"
       )
         .bind(userId, today)
         .run();
-      return toUserProfile(
-        { user_id: userId, tier: "free", daily_used: 0, usage_date: today },
-        env
-      );
+      return toUserProfile(fresh, env);
     }
 
     const tier: UserTier = existing.tier === "paid" ? "paid" : "free";
@@ -204,10 +217,9 @@ async function getOrInitUser(env: Env, userId: string): Promise<UserProfile> {
         .bind(today, userId)
         .run();
     }
-    return toUserProfile(
-      { user_id: userId, tier, daily_used: dailyUsed, usage_date: today },
-      env
-    );
+    const row = { user_id: userId, tier, daily_used: dailyUsed, usage_date: today };
+    memoryUsers.set(userId, row);
+    return toUserProfile(row, env);
   }
 
   let rec = memoryUsers.get(userId);
@@ -221,11 +233,25 @@ async function getOrInitUser(env: Env, userId: string): Promise<UserProfile> {
   return toUserProfile(rec, env);
 }
 
-async function incrementUserUsage(env: Env, userId: string): Promise<UserProfile> {
-  const current = await getOrInitUser(env, userId);
+function incrementUserProfileInMemory(current: UserProfile, env: Env): UserProfile {
   const nextUsed = current.daily_used + 1;
   const today = todayUtc();
+  const updated = {
+    user_id: current.user_id,
+    tier: current.tier,
+    daily_used: nextUsed,
+    usage_date: today,
+  };
+  memoryUsers.set(current.user_id, updated);
+  return toUserProfile(updated, env);
+}
 
+async function persistUserUsageIncrement(
+  env: Env,
+  userId: string,
+  nextUsed: number,
+  today: string
+): Promise<void> {
   if (env.DB) {
     await env.DB.prepare(
       "UPDATE users SET daily_used = ?, usage_date = ? WHERE user_id = ?"
@@ -239,10 +265,6 @@ async function incrementUserUsage(env: Env, userId: string): Promise<UserProfile
       rec.usage_date = today;
     }
   }
-  return toUserProfile(
-    { user_id: userId, tier: current.tier, daily_used: nextUsed, usage_date: today },
-    env
-  );
 }
 
 export async function setTestUserTier(
@@ -335,6 +357,7 @@ interface ArchiveLogInput {
   endpoint: string;
   tone?: string;
   conversationText?: string;
+  structuredContext?: StructuredChatContext;
   customInstruction?: string;
   replyText?: string;
   imageBase64?: string;
@@ -382,6 +405,7 @@ async function archiveRequestToR2AndD1(input: ArchiveLogInput): Promise<void> {
     has_image: Boolean(imageR2Key),
     image_r2_key: imageR2Key,
     conversation_text: input.conversationText ?? null,
+    structured_context: input.structuredContext ?? null,
     custom_instruction: input.customInstruction ?? null,
     reply_text: input.replyText ?? null,
     status_code: input.statusCode,
@@ -486,10 +510,10 @@ async function callGemini(
     };
   }
 
-  const primaryModel = env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
-  const candidateModels = [primaryModel, primaryModel];
+  const primaryModel = env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+  const candidateModels = [primaryModel];
 
-  const requestBody = {
+  const buildRequestBody = (_modelName: string) => ({
     systemInstruction: {
       parts: [{ text: SYSTEM_PROMPT }],
     },
@@ -501,8 +525,10 @@ async function callGemini(
     ],
     generationConfig: {
       responseMimeType: "application/json",
-      responseSchema: REPLY_RESPONSE_SCHEMA,
-      temperature: 0.4,
+      temperature: 0.3,
+      thinkingConfig: {
+        thinkingLevel: "MINIMAL",
+      },
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -510,29 +536,37 @@ async function callGemini(
       { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
       { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
     ],
-  };
+  });
 
   const fetchFn =
     customFetcher ??
     (async (targetUrl: string, init?: RequestInit): Promise<Response> => {
-      if (env.GEMINI_PROXY) {
-        try {
-          const doId = env.GEMINI_PROXY.idFromName("gemini-us-wnam-v1");
-          const stub = env.GEMINI_PROXY.get(doId, { locationHint: "wnam" });
-          const proxyReq = new Request("https://gemini-proxy.internal/forward", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Target-Url": targetUrl,
-            },
-            body: init?.body,
-          });
-          return await stub.fetch(proxyReq);
-        } catch {
-          // Fall back to direct fetch if DO invocation fails
+      const directResp = await fetch(targetUrl, init);
+      if (directResp.ok) {
+        return directResp;
+      }
+      // Only fall back to US Durable Object proxy if direct edge is geo-restricted
+      if ((directResp.status === 400 || directResp.status === 403) && env.GEMINI_PROXY) {
+        const clonedText = await directResp.clone().text().catch(() => "");
+        if (clonedText.toLowerCase().includes("location")) {
+          try {
+            const doId = env.GEMINI_PROXY.idFromName("gemini-us-wnam-v1");
+            const stub = env.GEMINI_PROXY.get(doId, { locationHint: "wnam" });
+            const proxyReq = new Request("https://gemini-proxy.internal/forward", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Target-Url": targetUrl,
+              },
+              body: init?.body,
+            });
+            return await stub.fetch(proxyReq);
+          } catch {
+            return directResp;
+          }
         }
       }
-      return fetch(targetUrl, init);
+      return directResp;
     });
   let upstreamResponse: Response | null = null;
   let upstreamJson: any = null;
@@ -549,7 +583,7 @@ async function callGemini(
       upstreamResponse = await fetchFn(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(buildRequestBody(model)),
       });
     } catch (err: any) {
       errorTrace.push(`net_err(${model}): ${err?.message || "fetch failed"}`);
@@ -694,6 +728,119 @@ app.get("/v1/user", async (c) => {
   return c.json(profile);
 });
 
+function parseStructuredContext(raw: unknown): StructuredChatContext | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const obj = raw as Record<string, unknown>;
+  if (!Array.isArray(obj.messages) || obj.messages.length === 0) return undefined;
+
+  const messages: StructuredChatMessage[] = [];
+  for (let i = 0; i < obj.messages.length; i++) {
+    const item = obj.messages[i];
+    if (!item || typeof item !== "object") continue;
+    const m = item as Record<string, unknown>;
+    const text = typeof m.text === "string" ? m.text.trim() : "";
+    if (!text) continue;
+    const rawSender = typeof m.sender === "string" ? m.sender.toLowerCase() : "them";
+    const sender: "them" | "me" | "system" =
+      rawSender === "me" ? "me" : rawSender === "system" ? "system" : "them";
+    const rawAlign = typeof m.alignment === "string" ? m.alignment.toLowerCase() : undefined;
+    const alignment: "left" | "right" | "center" | undefined =
+      rawAlign === "right" || rawAlign === "center" || rawAlign === "left"
+        ? rawAlign
+        : undefined;
+    messages.push({
+      index: typeof m.index === "number" ? m.index : messages.length + 1,
+      sender,
+      text: text.slice(0, 1500),
+      alignment,
+    });
+  }
+
+  if (messages.length === 0) return undefined;
+
+  const slotPlans: string[] = [];
+  if (Array.isArray(obj.reply_slot_plans)) {
+    for (const plan of obj.reply_slot_plans.slice(0, 3)) {
+      if (typeof plan === "string" && plan.trim()) {
+        slotPlans.push(plan.trim().slice(0, 300));
+      }
+    }
+  }
+
+  return {
+    source: typeof obj.source === "string" ? obj.source.slice(0, 64) : "ocr_select_and_search",
+    language_hint: typeof obj.language_hint === "string" ? obj.language_hint.slice(0, 32) : "auto",
+    reply_language_directive:
+      typeof obj.reply_language_directive === "string"
+        ? obj.reply_language_directive.trim().slice(0, 400)
+        : undefined,
+    last_speaker:
+      typeof obj.last_speaker === "string" ? obj.last_speaker.trim().slice(0, 16) : undefined,
+    message_intent:
+      typeof obj.message_intent === "string" ? obj.message_intent.trim().slice(0, 64) : undefined,
+    user_style_hint:
+      typeof obj.user_style_hint === "string" ? obj.user_style_hint.trim().slice(0, 64) : undefined,
+    target_word_count_range:
+      typeof obj.target_word_count_range === "string"
+        ? obj.target_word_count_range.trim().slice(0, 32)
+        : undefined,
+    reply_slot_plans: slotPlans.length > 0 ? slotPlans : undefined,
+    latest_incoming_message:
+      typeof obj.latest_incoming_message === "string"
+        ? obj.latest_incoming_message.trim().slice(0, 1500)
+        : messages.filter((m) => m.sender === "them").slice(-1)[0]?.text ??
+          messages[messages.length - 1].text,
+    messages,
+  };
+}
+
+function formatStructuredContextPrompt(ctx: StructuredChatContext): string {
+  const turns = ctx.messages
+    .map((m) => {
+      const roleLabel =
+        m.sender === "me"
+          ? "USER (Me)"
+          : m.sender === "system"
+          ? "CONTEXT"
+          : "PARTNER (Them)";
+      return `  ${m.index}. [${roleLabel}]: ${m.text}`;
+    })
+    .join("\n");
+
+  const lines = [
+    "=== PRE-ANALYZED CONVERSATION SPEC ===",
+    `Language Hint: ${ctx.language_hint || "auto"}`,
+  ];
+  if (ctx.reply_language_directive) {
+    lines.push(`Reply Language Directive (MANDATORY): ${ctx.reply_language_directive}`);
+  }
+  if (ctx.user_style_hint) {
+    lines.push(`User Writing Style: ${ctx.user_style_hint}`);
+  }
+  if (ctx.target_word_count_range) {
+    lines.push(`Target Length Per Reply: ${ctx.target_word_count_range}`);
+  }
+  if (ctx.message_intent) {
+    lines.push(`Detected Message Intent: ${ctx.message_intent}`);
+  }
+  if (ctx.last_speaker) {
+    lines.push(`Last Speaker on Screen: ${ctx.last_speaker}`);
+  }
+  if (ctx.reply_slot_plans && ctx.reply_slot_plans.length > 0) {
+    lines.push("Required 3-Slot Reply Plan:");
+    for (const plan of ctx.reply_slot_plans) {
+      lines.push(`  - ${plan}`);
+    }
+  }
+  lines.push(`Turn-by-Turn Conversation (${ctx.messages.length} messages, oldest to newest):`);
+  lines.push(turns);
+  if (ctx.latest_incoming_message) {
+    lines.push(`Latest Incoming Message Requiring Reply: "${ctx.latest_incoming_message}"`);
+  }
+  lines.push("======================================");
+  return lines.join("\n");
+}
+
 app.post("/v1/analyze", enforceRequestGuards, async (c) => {
   let payload: Record<string, unknown>;
   try {
@@ -710,6 +857,7 @@ app.post("/v1/analyze", enforceRequestGuards, async (c) => {
       : "image/jpeg";
   const conversationText =
     typeof payload.conversation_text === "string" ? payload.conversation_text : undefined;
+  const structuredContext = parseStructuredContext(payload.structured_context);
   const tone = typeof payload.tone === "string" ? payload.tone : undefined;
   const customInstruction =
     typeof payload.custom_instruction === "string"
@@ -731,12 +879,16 @@ app.post("/v1/analyze", enforceRequestGuards, async (c) => {
 
   const hasImage = Boolean(imageBase64 && imageBase64.trim());
   const hasText = Boolean(conversationText && conversationText.trim());
-  if (!hasImage && !hasText) {
-    return c.json({ detail: "Provide image_base64 or conversation_text." }, 422);
+  const hasStructured = Boolean(structuredContext && structuredContext.messages.length > 0);
+  if (!hasImage && !hasText && !hasStructured) {
+    return c.json(
+      { detail: "Provide structured_context, conversation_text, or image_base64." },
+      422
+    );
   }
 
   const parts: Array<Record<string, unknown>> = [];
-  if (hasImage && imageBase64) {
+  if (!hasStructured && hasImage && imageBase64) {
     if (!isValidBase64(imageBase64)) {
       return c.json({ detail: "Invalid base64 image data." }, 400);
     }
@@ -765,11 +917,13 @@ app.post("/v1/analyze", enforceRequestGuards, async (c) => {
   }
 
   const promptLines = [
-    "Analyze the visible conversation context and generate exactly 3 reply suggestions.",
-    "Identify the sender of each message and focus on the latest incoming message.",
+    "Analyze the conversation context and generate exactly 3 reply suggestions.",
+    "Identify the sender of each message and focus on replying to the latest incoming message from PARTNER (Them).",
     "Do not invent facts about the user and do not assume agreement unless instructed.",
   ];
-  if (hasText && conversationText) {
+  if (hasStructured && structuredContext) {
+    promptLines.push(formatStructuredContextPrompt(structuredContext));
+  } else if (hasText && conversationText) {
     promptLines.push(`Conversation text:\n${conversationText.trim()}`);
   }
   if (tone) {
@@ -786,25 +940,42 @@ app.post("/v1/analyze", enforceRequestGuards, async (c) => {
   const startedAt = Date.now();
   const result = await callGemini(parts, c.env ?? {}, tone);
   const latencyMs = Date.now() - startedAt;
+  let usagePersistPromise: Promise<void> = Promise.resolve();
   if (result.status === 200 && "replies" in result.body) {
-    result.body.user = await incrementUserUsage(c.env ?? {}, userId);
+    const updatedProfile = incrementUserProfileInMemory(userProfile, c.env ?? {});
+    result.body.user = updatedProfile;
+    usagePersistPromise = persistUserUsageIncrement(
+      c.env ?? {},
+      userId,
+      updatedProfile.daily_used,
+      updatedProfile.usage_date
+    );
   }
+  const transcriptForLog =
+    conversationText ??
+    (structuredContext
+      ? structuredContext.messages.map((m) => `[${m.sender.toUpperCase()}]: ${m.text}`).join("\n")
+      : undefined);
   scheduleArchive(
     c,
-    archiveRequestToR2AndD1({
-      env: c.env ?? {},
-      userId,
-      tier: userProfile.tier,
-      endpoint: "/v1/analyze",
-      tone,
-      conversationText,
-      customInstruction,
-      imageBase64,
-      mimeType,
-      statusCode: result.status,
-      responseBody: result.body,
-      latencyMs,
-    })
+    Promise.all([
+      usagePersistPromise,
+      archiveRequestToR2AndD1({
+        env: c.env ?? {},
+        userId,
+        tier: userProfile.tier,
+        endpoint: "/v1/analyze",
+        tone,
+        conversationText: transcriptForLog,
+        structuredContext,
+        customInstruction,
+        imageBase64: hasStructured ? undefined : imageBase64,
+        mimeType,
+        statusCode: result.status,
+        responseBody: result.body,
+        latencyMs,
+      }),
+    ]).then(() => undefined)
   );
   return c.json(result.body, result.status as 200 | 400 | 503);
 });
@@ -869,23 +1040,34 @@ app.post("/v1/replies", enforceRequestGuards, async (c) => {
   const startedAt = Date.now();
   const result = await callGemini([{ text: promptLines.join("\n") }], c.env ?? {}, tone);
   const latencyMs = Date.now() - startedAt;
+  let usagePersistPromise: Promise<void> = Promise.resolve();
   if (result.status === 200 && "replies" in result.body) {
-    result.body.user = await incrementUserUsage(c.env ?? {}, userId);
+    const updatedProfile = incrementUserProfileInMemory(userProfile, c.env ?? {});
+    result.body.user = updatedProfile;
+    usagePersistPromise = persistUserUsageIncrement(
+      c.env ?? {},
+      userId,
+      updatedProfile.daily_used,
+      updatedProfile.usage_date
+    );
   }
   scheduleArchive(
     c,
-    archiveRequestToR2AndD1({
-      env: c.env ?? {},
-      userId,
-      tier: userProfile.tier,
-      endpoint: "/v1/replies",
-      tone,
-      conversationText,
-      customInstruction,
-      statusCode: result.status,
-      responseBody: result.body,
-      latencyMs,
-    })
+    Promise.all([
+      usagePersistPromise,
+      archiveRequestToR2AndD1({
+        env: c.env ?? {},
+        userId,
+        tier: userProfile.tier,
+        endpoint: "/v1/replies",
+        tone,
+        conversationText,
+        customInstruction,
+        statusCode: result.status,
+        responseBody: result.body,
+        latencyMs,
+      }),
+    ]).then(() => undefined)
   );
   return c.json(result.body, result.status as 200 | 400 | 503);
 });
@@ -902,6 +1084,10 @@ app.post("/v1/rewrite", enforceRequestGuards, async (c) => {
   const action =
     typeof payload.action === "string" ? payload.action : ("rewrite" as RewriteAction);
   const tone = typeof payload.tone === "string" ? payload.tone : undefined;
+  const languageDirective =
+    typeof payload.reply_language_directive === "string"
+      ? payload.reply_language_directive.trim().slice(0, 400)
+      : undefined;
   const customInstruction =
     typeof payload.custom_instruction === "string"
       ? payload.custom_instruction
@@ -954,6 +1140,9 @@ app.post("/v1/rewrite", enforceRequestGuards, async (c) => {
     `Original draft reply:\n${replyText.trim()}`,
     "Do not invent facts about the user.",
   ];
+  if (languageDirective) {
+    promptLines.push(`Reply Language Directive (MANDATORY): ${languageDirective}`);
+  }
   if (conversationText && conversationText.trim()) {
     promptLines.push(`Conversation context:\n${conversationText.trim()}`);
   }
@@ -967,24 +1156,35 @@ app.post("/v1/rewrite", enforceRequestGuards, async (c) => {
   const startedAt = Date.now();
   const result = await callGemini([{ text: promptLines.join("\n") }], c.env ?? {}, tone);
   const latencyMs = Date.now() - startedAt;
+  let usagePersistPromise: Promise<void> = Promise.resolve();
   if (result.status === 200 && "replies" in result.body) {
-    result.body.user = await incrementUserUsage(c.env ?? {}, userId);
+    const updatedProfile = incrementUserProfileInMemory(userProfile, c.env ?? {});
+    result.body.user = updatedProfile;
+    usagePersistPromise = persistUserUsageIncrement(
+      c.env ?? {},
+      userId,
+      updatedProfile.daily_used,
+      updatedProfile.usage_date
+    );
   }
   scheduleArchive(
     c,
-    archiveRequestToR2AndD1({
-      env: c.env ?? {},
-      userId,
-      tier: userProfile.tier,
-      endpoint: "/v1/rewrite",
-      tone,
-      conversationText,
-      customInstruction,
-      replyText,
-      statusCode: result.status,
-      responseBody: result.body,
-      latencyMs,
-    })
+    Promise.all([
+      usagePersistPromise,
+      archiveRequestToR2AndD1({
+        env: c.env ?? {},
+        userId,
+        tier: userProfile.tier,
+        endpoint: "/v1/rewrite",
+        tone,
+        conversationText,
+        customInstruction,
+        replyText,
+        statusCode: result.status,
+        responseBody: result.body,
+        latencyMs,
+      }),
+    ]).then(() => undefined)
   );
   return c.json(result.body, result.status as 200 | 400 | 503);
 });

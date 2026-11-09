@@ -11,6 +11,9 @@ import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.SurroundingText
 import android.os.Bundle
 import android.os.Handler
+import com.wingai.keyboard.ai.WingAiApiClient
+import com.wingai.keyboard.capture.ChatOcrExtractor
+import com.wingai.keyboard.capture.OcrDetectedLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -142,5 +145,48 @@ class WingAiBridgeTest {
         assertTrue(InputConnectionBridge.isPasswordFieldActive())
         assertEquals("", InputConnectionBridge.readHostFieldText())
         assertFalse(InputConnectionBridge.replaceHostFieldText("hacked").isSuccess)
+    }
+
+    @Test
+    fun chatOcrExtractorBuildsSystematicStructuredPayloadWithoutImageBytes() {
+        val lines = listOf(
+            OcrDetectedLine("Today", left = 420, top = 20, right = 580, bottom = 50),
+            OcrDetectedLine("Hey kal sham ko 7 baje", left = 40, top = 100, right = 480, bottom = 140),
+            OcrDetectedLine("coffee pe milte hain? 6:42 PM", left = 40, top = 148, right = 500, bottom = 188),
+            OcrDetectedLine("Haan sounds good, kahan? 6:43 PM", left = 460, top = 240, right = 940, bottom = 280),
+            OcrDetectedLine("Blue Tokai Indiranagar chalte hain!", left = 45, top = 340, right = 620, bottom = 380)
+        )
+
+        val structured = ChatOcrExtractor.buildStructuredChatFromLines(
+            lines = lines,
+            cropWidth = 1000,
+            cropHeight = 600
+        )
+
+        assertEquals("hinglish", structured.languageHint)
+        assertEquals("time_or_place_proposal", structured.messageIntent)
+        assertEquals(3, structured.replySlotPlans.size)
+        assertTrue(structured.replyLanguageDirective.contains("Hinglish"))
+        assertEquals(3, structured.messages.size)
+        assertEquals("them", structured.messages[0].sender)
+        assertEquals("Hey kal sham ko 7 baje coffee pe milte hain?", structured.messages[0].text)
+        assertEquals("me", structured.messages[1].sender)
+        assertEquals("Haan sounds good, kahan?", structured.messages[1].text)
+        assertEquals("them", structured.messages[2].sender)
+        assertEquals("Blue Tokai Indiranagar chalte hain!", structured.latestIncomingMessage)
+
+        val payloadJson = WingAiApiClient.buildAnalyzePayloadJson(
+            userId = "wing_b6cef3b37f",
+            imageBase64 = "should_not_be_sent",
+            tone = ReplyTone.CASUAL,
+            structuredContext = structured
+        )
+
+        assertFalse(payloadJson.has("image_base64"))
+        assertTrue(payloadJson.has("structured_context"))
+        assertEquals(
+            "Blue Tokai Indiranagar chalte hain!",
+            payloadJson.getJSONObject("structured_context").getString("latest_incoming_message")
+        )
     }
 }

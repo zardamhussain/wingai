@@ -173,6 +173,8 @@ dependencies {
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    // Bundled on-device OCR for Select & Search so raw screenshots never leave the device.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 
     // androidx
     implementation("androidx.core:core-ktx:1.16.0") // 1.17 requires SDK 36
@@ -199,6 +201,7 @@ dependencies {
     // test
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20180813")
     testImplementation("org.mockito:mockito-core:5.17.0")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:runner:1.6.2")

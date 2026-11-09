@@ -1,12 +1,15 @@
 package com.wingai.keyboard.ai
 
+import com.wingai.keyboard.capture.ChatOcrExtractor
 import com.wingai.keyboard.data.AiReplyResult
 import com.wingai.keyboard.data.ReplySuggestion
 import com.wingai.keyboard.data.ReplyTone
 import com.wingai.keyboard.data.RewriteAction
+import com.wingai.keyboard.data.StructuredChatContext
 import com.wingai.keyboard.data.UserProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -32,26 +35,19 @@ class WingAiApiClient(
         imageBase64: String? = null,
         conversationText: String? = null,
         tone: ReplyTone? = null,
-        customInstruction: String? = null
+        customInstruction: String? = null,
+        structuredContext: StructuredChatContext? = null
     ): Result<AiReplyResult> = withContext(Dispatchers.IO) {
         runCatching {
             val uid = userIdProvider?.invoke().orEmpty()
-            val payload = JSONObject().apply {
-                if (uid.isNotBlank()) put("user_id", uid)
-                if (!imageBase64.isNullOrBlank()) {
-                    put("image_base64", imageBase64)
-                    put("mime_type", "image/jpeg")
-                }
-                if (!conversationText.isNullOrBlank()) {
-                    put("conversation_text", conversationText.trim())
-                }
-                if (tone != null) {
-                    put("tone", tone.wireName)
-                }
-                if (!customInstruction.isNullOrBlank()) {
-                    put("custom_instruction", customInstruction.trim())
-                }
-            }
+            val payload = buildAnalyzePayloadJson(
+                userId = uid,
+                imageBase64 = imageBase64,
+                conversationText = conversationText,
+                tone = tone,
+                customInstruction = customInstruction,
+                structuredContext = structuredContext
+            )
             val raw = postJson("/v1/analyze", payload.toString(), uid)
             parseReplyResponse(raw)
         }
@@ -64,15 +60,15 @@ class WingAiApiClient(
     ): Result<AiReplyResult> = withContext(Dispatchers.IO) {
         runCatching {
             val uid = userIdProvider?.invoke().orEmpty()
-            val payload = JSONObject().apply {
-                if (uid.isNotBlank()) put("user_id", uid)
-                put("conversation_text", conversationText.trim())
-                if (tone != null) put("tone", tone.wireName)
-                if (!customInstruction.isNullOrBlank()) {
-                    put("custom_instruction", customInstruction.trim())
-                }
-            }
-            val raw = postJson("/v1/replies", payload.toString(), uid)
+            val preAnalyzed = ChatOcrExtractor.buildStructuredChatFromRawText(conversationText)
+            val payload = buildAnalyzePayloadJson(
+                userId = uid,
+                conversationText = conversationText,
+                tone = tone,
+                customInstruction = customInstruction,
+                structuredContext = preAnalyzed
+            )
+            val raw = postJson("/v1/analyze", payload.toString(), uid)
             parseReplyResponse(raw)
         }
     }
@@ -86,10 +82,13 @@ class WingAiApiClient(
     ): Result<AiReplyResult> = withContext(Dispatchers.IO) {
         runCatching {
             val uid = userIdProvider?.invoke().orEmpty()
+            val preAnalyzed = ChatOcrExtractor.buildStructuredChatFromRawText(replyText)
             val payload = JSONObject().apply {
                 if (uid.isNotBlank()) put("user_id", uid)
                 put("reply_text", replyText.trim())
                 put("action", action.wireName)
+                put("language_hint", preAnalyzed.languageHint)
+                put("reply_language_directive", preAnalyzed.replyLanguageDirective)
                 if (tone != null) put("tone", tone.wireName)
                 if (!customInstruction.isNullOrBlank()) {
                     put("custom_instruction", customInstruction.trim())
@@ -185,6 +184,69 @@ class WingAiApiClient(
     }
 
     companion object {
+        fun buildAnalyzePayloadJson(
+            userId: String,
+            imageBase64: String? = null,
+            conversationText: String? = null,
+            tone: ReplyTone? = null,
+            customInstruction: String? = null,
+            structuredContext: StructuredChatContext? = null
+        ): JSONObject {
+            return JSONObject().apply {
+                if (userId.isNotBlank()) put("user_id", userId)
+                if (structuredContext != null) {
+                    val messagesArr = JSONArray()
+                    for (msg in structuredContext.messages) {
+                        messagesArr.put(
+                            JSONObject()
+                                .put("index", msg.index)
+                                .put("sender", msg.sender)
+                                .put("text", msg.text)
+                                .put("alignment", msg.alignment)
+                        )
+                    }
+                    val slotPlansArr = JSONArray()
+                    for (plan in structuredContext.replySlotPlans) {
+                        slotPlansArr.put(plan)
+                    }
+                    put(
+                        "structured_context",
+                        JSONObject()
+                            .put("source", structuredContext.source)
+                            .put("language_hint", structuredContext.languageHint)
+                            .put("reply_language_directive", structuredContext.replyLanguageDirective)
+                            .put("last_speaker", structuredContext.lastSpeaker)
+                            .put("message_intent", structuredContext.messageIntent)
+                            .put("user_style_hint", structuredContext.userStyleHint)
+                            .put("target_word_count_range", structuredContext.targetWordCountRange)
+                            .put("reply_slot_plans", slotPlansArr)
+                            .put("latest_incoming_message", structuredContext.latestIncomingMessage)
+                            .put("messages", messagesArr)
+                    )
+                }
+                val resolvedConversationText = when {
+                    !conversationText.isNullOrBlank() -> conversationText.trim()
+                    structuredContext != null && structuredContext.formattedTranscript.isNotBlank() ->
+                        structuredContext.formattedTranscript.trim()
+                    else -> ""
+                }
+                if (resolvedConversationText.isNotBlank()) {
+                    put("conversation_text", resolvedConversationText)
+                }
+                // Only include image_base64 if no structured OCR text is present
+                if (structuredContext == null && !imageBase64.isNullOrBlank()) {
+                    put("image_base64", imageBase64)
+                    put("mime_type", "image/jpeg")
+                }
+                if (tone != null) {
+                    put("tone", tone.wireName)
+                }
+                if (!customInstruction.isNullOrBlank()) {
+                    put("custom_instruction", customInstruction.trim())
+                }
+            }
+        }
+
         fun parseUserProfile(obj: JSONObject): UserProfile {
             return UserProfile(
                 userId = obj.optString("user_id", ""),

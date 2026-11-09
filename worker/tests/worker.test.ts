@@ -250,4 +250,70 @@ describe("WingAI Cloudflare Worker API", () => {
     expect(logContent.image_r2_key).toBe(imageKey);
     expect(logContent.status_code).toBe(200);
   });
+
+  it("POST /v1/analyze accepts systematic structured_context from on-device OCR without image_base64", async () => {
+    let capturedPrompt = "";
+    setGeminiFetcher(async (_url, init) => {
+      const reqJson = JSON.parse(String(init?.body || "{}"));
+      capturedPrompt = reqJson?.contents?.[0]?.parts?.[0]?.text || "";
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      status: "success",
+                      context_status: "sufficient",
+                      replies: [
+                        { tone: "casual", text: "Haan 7 PM pakka milte hain!" },
+                        { tone: "friendly", text: "Sounds good, 7 PM at Blue Tokai works!" },
+                        { tone: "professional", text: "7:00 PM works well for me. See you there." },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    });
+
+    const res = await app.request(
+      "/v1/analyze",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": "wing_ocr_user",
+        },
+        body: JSON.stringify({
+          tone: "casual",
+          structured_context: {
+            source: "ocr_select_and_search",
+            language_hint: "hinglish",
+            latest_incoming_message: "Blue Tokai chalte hain 7 PM?",
+            messages: [
+              { index: 1, sender: "them", text: "Hey kal sham ko milte hain?", alignment: "left" },
+              { index: 2, sender: "me", text: "Haan kahan milna hai?", alignment: "right" },
+              { index: 3, sender: "them", text: "Blue Tokai chalte hain 7 PM?", alignment: "left" },
+            ],
+          },
+        }),
+      },
+      DEFAULT_ENV
+    );
+
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.status).toBe("success");
+    expect(body.replies).toHaveLength(3);
+    expect(capturedPrompt).toContain("=== PRE-ANALYZED CONVERSATION SPEC ===");
+    expect(capturedPrompt).toContain("Language Hint: hinglish");
+    expect(capturedPrompt).toContain("[PARTNER (Them)]: Blue Tokai chalte hain 7 PM?");
+    expect(capturedPrompt).toContain("[USER (Me)]: Haan kahan milna hai?");
+  });
 });

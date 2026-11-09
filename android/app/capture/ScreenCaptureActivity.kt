@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wingai.keyboard.ai.WingAiApiClient
+import com.wingai.keyboard.data.AiHubMode
 import com.wingai.keyboard.data.InputConnectionBridge
 import com.wingai.keyboard.settings.SettingsRepository
 import com.wingai.keyboard.ui.WingAiTheme
@@ -150,7 +151,7 @@ class ScreenCaptureActivity : ComponentActivity() {
                             closeAndRestoreKeyboard()
                         },
                         onConfirmSelection = { left, top, right, bottom ->
-                            val croppedBase64 = ScreenCaptureManager.cropAndEncodeBitmap(
+                            val croppedBitmap = ScreenCaptureManager.cropBitmap(
                                 bitmap!!,
                                 left,
                                 top,
@@ -158,7 +159,7 @@ class ScreenCaptureActivity : ComponentActivity() {
                                 bottom
                             )
                             ScreenCaptureManager.clearCapturedBitmap()
-                            analyzeSelectedCrop(croppedBase64)
+                            analyzeSelectedCropBitmap(croppedBitmap)
                             closeAndRestoreKeyboard()
                         }
                     )
@@ -230,28 +231,54 @@ class ScreenCaptureActivity : ComponentActivity() {
         }
     }
 
-    private fun analyzeSelectedCrop(croppedBase64: String) {
+    private fun analyzeSelectedCropBitmap(croppedBitmap: Bitmap) {
         InputConnectionBridge.updateState {
             it.copy(
                 isPanelOpen = true,
+                hubMode = AiHubMode.REPLY,
                 isLoading = true,
-                selectedImageBase64 = croppedBase64,
+                selectedImageBase64 = null,
                 pendingImageBase64 = null,
                 errorMessage = null
             )
         }
         val appContext = applicationContext
         analysisScope.launch {
+            val ocrResult = try {
+                ChatOcrExtractor.extractStructuredChat(croppedBitmap)
+            } finally {
+                if (!croppedBitmap.isRecycled) {
+                    runCatching { croppedBitmap.recycle() }
+                }
+            }
+
+            val structured = ocrResult.getOrElse { err ->
+                InputConnectionBridge.updateState {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = err.message ?: "Could not extract text from selected region."
+                    )
+                }
+                return@launch
+            }
+
+            InputConnectionBridge.updateState {
+                it.copy(
+                    structuredContext = structured,
+                    pastedContext = structured.formattedTranscript
+                )
+            }
+
             val repo = SettingsRepository(appContext)
             val userId = repo.getOrCreateUserId()
             val settings = repo.settingsFlow.first()
             val client = WingAiApiClient({ settings.backendUrl }, { userId })
             val state = InputConnectionBridge.sessionState.value
             val result = client.analyzeContext(
-                imageBase64 = croppedBase64,
-                conversationText = state.pastedContext,
+                conversationText = structured.formattedTranscript,
                 tone = state.selectedTone,
-                customInstruction = state.customInstruction
+                customInstruction = state.customInstruction,
+                structuredContext = structured
             )
             result.fold(
                 onSuccess = { res ->

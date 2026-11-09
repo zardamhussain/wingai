@@ -62,6 +62,27 @@ data class ReplySuggestion(
     val text: String
 )
 
+data class StructuredChatMessage(
+    val index: Int,
+    val sender: String, // "them" | "me" | "system"
+    val text: String,
+    val alignment: String // "left" | "right" | "center"
+)
+
+data class StructuredChatContext(
+    val source: String = "ocr_select_and_search",
+    val languageHint: String = "english",
+    val replyLanguageDirective: String = "Write all 3 replies in natural conversational English.",
+    val lastSpeaker: String = "them",
+    val messageIntent: String = "general_statement",
+    val userStyleHint: String = "casual_conversational",
+    val targetWordCountRange: String = "4 to 12 words",
+    val replySlotPlans: List<String> = emptyList(),
+    val latestIncomingMessage: String = "",
+    val messages: List<StructuredChatMessage> = emptyList(),
+    val formattedTranscript: String = ""
+)
+
 data class AiReplyResult(
     val status: String,
     val contextStatus: String,
@@ -80,6 +101,7 @@ data class AiSessionState(
     val errorMessage: String? = null,
     val pendingImageBase64: String? = null,
     val selectedImageBase64: String? = null,
+    val structuredContext: StructuredChatContext? = null,
     val pastedContext: String = "",
     val hostDraftText: String = "",
     val undoPreviousText: String? = null,

@@ -233,7 +233,8 @@ class AiSessionController(
         val state = InputConnectionBridge.sessionState.value
         val draft = InputConnectionBridge.readHostFieldText(preferSelection = true)
             .ifBlank { state.hostDraftText }
-        val hasChatContext = !state.selectedImageBase64.isNullOrBlank() ||
+        val hasChatContext = state.structuredContext != null ||
+            !state.selectedImageBase64.isNullOrBlank() ||
             !state.pendingImageBase64.isNullOrBlank() ||
             state.pastedContext.isNotBlank()
 
@@ -275,7 +276,9 @@ class AiSessionController(
 
     fun confirmUploadPendingCapture() {
         val state = InputConnectionBridge.sessionState.value
-        val base64 = state.pendingImageBase64 ?: state.selectedImageBase64 ?: return
+        val structured = state.structuredContext
+        val base64 = state.pendingImageBase64 ?: state.selectedImageBase64
+        if (structured == null && base64.isNullOrBlank()) return
         activeJob?.cancel()
         activeJob = scope.launch {
             InputConnectionBridge.updateState { it.copy(isLoading = true, errorMessage = null, lastReplacedText = null) }
@@ -283,10 +286,11 @@ class AiSessionController(
             val settings = settingsRepository.settingsFlow.first()
             val client = WingAiApiClient({ settings.backendUrl }, { userId })
             val result = client.analyzeContext(
-                imageBase64 = base64,
-                conversationText = state.pastedContext,
+                imageBase64 = if (structured == null) base64 else null,
+                conversationText = state.pastedContext.ifBlank { structured?.formattedTranscript.orEmpty() },
                 tone = state.selectedTone,
-                customInstruction = state.customInstruction
+                customInstruction = state.customInstruction,
+                structuredContext = structured
             )
             result.fold(
                 onSuccess = { res ->
@@ -323,7 +327,8 @@ class AiSessionController(
         val state = InputConnectionBridge.sessionState.value
         val hostDraft = InputConnectionBridge.readHostFieldText(preferSelection = true)
             .ifBlank { state.hostDraftText }
-        val hasChatContext = !state.selectedImageBase64.isNullOrBlank() ||
+        val hasChatContext = state.structuredContext != null ||
+            !state.selectedImageBase64.isNullOrBlank() ||
             !state.pendingImageBase64.isNullOrBlank() ||
             state.pastedContext.isNotBlank()
 
@@ -347,7 +352,7 @@ class AiSessionController(
             startScreenAnalysis()
             return
         }
-        if (!state.pendingImageBase64.isNullOrBlank() || !state.selectedImageBase64.isNullOrBlank()) {
+        if (state.structuredContext != null || !state.pendingImageBase64.isNullOrBlank() || !state.selectedImageBase64.isNullOrBlank()) {
             confirmUploadPendingCapture()
             return
         }
