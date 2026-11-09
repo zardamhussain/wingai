@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.data.WingAiBridgeTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:26.787Z" hostname="localhost" time="0.005">
+  <properties/>
+  <testcase name="readHostFieldTextPrefersSelectedTextOverExtractedDraft" classname="com.wingai.keyboard.data.WingAiBridgeTest" time="0.004"/>
+  <testcase name="passwordFieldsDisableHostReadAndReplace" classname="com.wingai.keyboard.data.WingAiBridgeTest" time="0.001"/>
+  <testcase name="replaceHostFieldTextReplacesInPlaceAndSupportsOneTapUndo" classname="com.wingai.keyboard.data.WingAiBridgeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

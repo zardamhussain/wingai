@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wingai.keyboard.auth.WingAiAuthViewModelTest" tests="38" skipped="0" failures="0" errors="0" timestamp="2026-11-03T04:23:26.609Z" hostname="localhost" time="0.175">
+  <properties/>
+  <testcase name="signedOutInitially" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.04"/>
+  <testcase name="failedSignInShowsSafeErrorAndReenablesForm" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.046"/>
+  <testcase name="restoredSessionBackfillsDeviceIdWithoutAnotherLogin" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.003"/>
+  <testcase name="cancelledGoogleDeletionKeepsAccount" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.003"/>
+  <testcase name="googleChooserCancellationIsNotAnError" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="existingSixCharacterPasswordsStillWork" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="failedProfileSyncCanBeRetried" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.003"/>
+  <testcase name="registrationCreatesProfileAndSendsVerification" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.006"/>
+  <testcase name="googlePickerSurvivesHumanDelayWithoutNetworkTimeout" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="badEmailNeverReachesGateway" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="missingGoogleConfigurationDoesNotLaunchPicker" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="deletionRequiresPassword" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="timeoutDoesNotLeaveFormBusy" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="resetDoesNotRequirePasswordOrRevealUserExistence" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="cancelledSyncCannotPublishDeviceIdIntoSignedOutScreen" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="cooldownBlocksRepeatVerification" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.008"/>
+  <testcase name="googleProfileFailureDoesNotUndoAuthentication" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="googleProviderErrorKeepsEmailLoginAvailable" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="failedDeletionKeepsSession" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.003"/>
+  <testcase name="slowFirestoreDoesNotHoldGoogleLoginBusy" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="googleNetworkTimeoutReenablesButtons" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="firestoreFailureDoesNotUndoLogin" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="mismatchedGoogleAccountDoesNotDeleteOrSwitchSession" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="googleDeletionReauthenticatesCapturedUserWithoutPassword" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="profileTimeoutIsNotAnAuthenticationError" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="providerThatNeverReturnsHasBoundedChooserWait" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.003"/>
+  <testcase name="explicitChooserCancelReleasesBusyState" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="duplicateSubmissionSuppressed" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="duplicateGoogleTapsAndEmailSubmissionBlockedWhileChoosing" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="successfulDeletionClearsSession" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="modeChangeClearsValidation" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.0"/>
+  <testcase name="verificationCanBeRefreshed" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="googleSignInCreatesSessionAndSyncsProfile" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.012"/>
+  <testcase name="passwordMismatchPreventsRegistration" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="googleDeletionCannotLaunchForPasswordOnlyUser" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="signOutRemovesSession" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.001"/>
+  <testcase name="verificationFailureKeepsCreatedAccount" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.002"/>
+  <testcase name="missingConfigIsNonFatal" classname="com.wingai.keyboard.auth.WingAiAuthViewModelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

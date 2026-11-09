@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exclude only this named Firebase Auth session; existing keyboard backup stays enabled.
+     Filename = com.google.firebase.auth.api.Store.<base64url(app name)>+<base64url(Firebase app ID)>.
+     Update alongside google-services.json if the Firebase Android app registration changes. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.d2luZ2FpLWFjY291bnQ+MTo0MzY3NTg2NzA4NjA6YW5kcm9pZDoxYTEwODJiZDEzNDNhOWU1MTBjODI5.xml" />
+    <exclude domain="sharedpref" path="com.google.firebase.auth.internal.ProcessDeathHelper.xml" />
+</full-backup-content>

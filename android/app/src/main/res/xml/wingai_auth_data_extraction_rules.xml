@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: Auth sessions must not migrate through either cloud backup or device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.d2luZ2FpLWFjY291bnQ+MTo0MzY3NTg2NzA4NjA6YW5kcm9pZDoxYTEwODJiZDEzNDNhOWU1MTBjODI5.xml" />
+        <exclude domain="sharedpref" path="com.google.firebase.auth.internal.ProcessDeathHelper.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.d2luZ2FpLWFjY291bnQ+MTo0MzY3NTg2NzA4NjA6YW5kcm9pZDoxYTEwODJiZDEzNDNhOWU1MTBjODI5.xml" />
+        <exclude domain="sharedpref" path="com.google.firebase.auth.internal.ProcessDeathHelper.xml" />
+    </device-transfer>
+</data-extraction-rules>
